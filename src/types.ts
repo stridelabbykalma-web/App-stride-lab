@@ -1,5 +1,5 @@
 import type { SpeedId } from './data/protocol';
-import type { Analysis } from './lib/analyze';
+import type { Analysis, LiveExerciseT } from './lib/analyze';
 
 /** Ficha de cliente — Análisis biomecánico. Todos los campos son texto libre o enumerados. */
 export interface Client {
@@ -78,6 +78,10 @@ export interface Correction {
   id: string;
   problemId: string;
   exerciseId: string;
+  /** Problema propuesto por el análisis del informe (no siempre está en la guía de ejemplo). */
+  titulo?: string;
+  /** Ejercicio en directo propuesto por el análisis. */
+  ejercicio?: LiveExerciseT;
   observa: string;
   tcAntes: string;
   tcDespues: string;

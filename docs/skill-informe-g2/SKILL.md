@@ -64,13 +64,14 @@ Escribe `informes/<nombre-cliente>-<AAAAMMDD>/analisis.json` con la forma de `An
 ```json
 {
   "resumen": "…",
-  "metricas": [{ "nombre": "Tiempo de contacto", "valor": "278 ms", "contexto": "10 km/h", "valoracion": "a_trabajar" }],
-  "problemas": [{ "problema_id": "01", "evidencia": "…" }],
+  "metricas": [{ "nombre": "Tiempo de contacto", "valor": "320 ms", "contexto": "Adios Pro 4 · 9 km/h", "valoracion": "a_trabajar" }],
+  "problemas": [{ "problema": "Cadencia baja", "problema_id": "10", "evidencia": "…" }],
+  "perfil_zapatilla": { "conclusion": "…", "caracteristicas": ["Drop 6-8 mm", "Amortiguación media"], "evidencia": "…" },
   "guion": {
     "apertura": "…",
     "zapatilla": "",
-    "puntos": [{ "titulo": "…", "dato": "…", "que_significa": "…", "que_le_dices": "…",
-                 "problema_id": "01", "ejercicio_id": "E01", "cue": "…" }],
+    "puntos": [{ "titulo": "…", "dato": "…", "que_significa": "…", "que_le_dices": "…", "problema_id": "10",
+                 "ejercicio": { "nombre": "…", "como": "…", "cue": "…", "que_notara": "…", "dato_a_vigilar": "…" } }],
     "cierre": "Lo más importante que te llevas hoy es: …"
   },
   "hallazgos_mensaje": ["…", "…", "…"],
@@ -79,7 +80,7 @@ Escribe `informes/<nombre-cliente>-<AAAAMMDD>/analisis.json` con la forma de `An
 ```
 
 - `valoracion`: `bien` | `mejorable` | `a_trabajar` | `sin_referencia`.
-- `problema_id`: `"01"`–`"15"` de la guía; en `puntos` puede ir vacío si no aplica.
+- `problema_id`: `"01"`–`"15"` si coincide con la guía de ejemplo; si no, vacío. La guía es un ejemplo de estilo: los ejercicios pueden ser nuevos, siempre sencillos, en la cinta y que el cliente note en el momento.
 - `hallazgos_mensaje`: exactamente 3 líneas cortas.
 
 ## 5. Responder

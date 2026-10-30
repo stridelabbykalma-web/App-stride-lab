@@ -85,6 +85,26 @@ Uso: en Claude Code, «lee el informe de Laura Pérez» o pega el enlace de mmru
 La contraseña de mmruns nunca pasa por Claude: el inicio de sesión lo haces tú en la ventana que se abre.
 Si la sesión caduca, el script avisa y basta con repetir `login`.
 
+## Fichas de zapatillas y qué tipo le funciona al cliente
+
+Cada modelo probado tiene un botón **Buscar ficha**, en la Fase 1 y en la lista del informe. Claude busca en
+internet (RunRepeat, la web de la marca, tiendas y reviews) el drop, el stack del talón y del antepié, el peso, la
+firmeza de la amortiguación, la reactividad, si lleva placa o rocker y el tipo de zapatilla. La ficha se guarda en
+el dispositivo, se reutiliza en todos los clientes y se puede corregir a mano.
+
+Al **Analizar**, esas fichas se cruzan con los datos del G2. Como en Stride Lab cada zapatilla se prueba a
+velocidades distintas, se compara siempre a la misma velocidad. Sale una conclusión de **qué tipo de zapatilla le
+funciona** (por ejemplo «drop 6-8 mm, amortiguación media, placa solo para ritmos rápidos») con la evidencia en
+que se apoya.
+
+## Ejercicios en directo
+
+Para cada punto (máximo 3), el análisis propone un ejercicio sencillo que el cliente hace en la cinta y nota en el
+momento. Cada uno lleva qué hace, el cue, **qué debe notar** para tomar consciencia y **qué dato del G2 debe
+moverse**, para enseñárselo en pantalla. La guía de los 15 problemas es un ejemplo del estilo: si el problema no
+está en la guía, se propone un ejercicio nuevo del mismo tipo. El paso **Informe G2 · Análisis** va antes de la
+Fase 2, y allí los ejercicios propuestos se añaden con un clic.
+
 ## Datos del G2 (MotionMetrix)
 
 Por cada pasada se guardan:

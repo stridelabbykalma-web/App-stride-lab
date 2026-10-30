@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { AnalysisSchema, analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput } from '../lib/analyze';
-import { findExercise, findProblem } from '../data/problems';
+import { AnalysisSchema, analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput, type LiveExerciseT } from '../lib/analyze';
+import { findProblem } from '../data/problems';
+import { specsToText, useShoeSpecs } from '../lib/shoeSpecs';
+import { ShoeSpecView } from './ShoeSpecView';
 import { loadReport, reportToText, type G2Report } from '../lib/mmruns';
 import { Card, CopyButton } from '../ui';
 
@@ -17,7 +19,11 @@ export function scriptText(a: Analysis): string {
   const parts = [a.guion.apertura];
   if (a.guion.zapatilla) parts.push(a.guion.zapatilla);
   a.guion.puntos.forEach((p, i) => {
-    parts.push(`${i + 1}. ${p.titulo} (${p.dato})\n${p.que_le_dices}${p.cue ? `\nCue: "${p.cue}"` : ''}`);
+    const e = p.ejercicio;
+    parts.push(
+      `${i + 1}. ${p.titulo} (${p.dato})\n${p.que_le_dices}` +
+        (e ? `\nEn la cinta: ${e.nombre} — ${e.como}\nCue: "${e.cue}"\nNotará: ${e.que_notara}\nEn el G2: ${e.dato_a_vigilar}` : ''),
+    );
   });
   parts.push(a.guion.cierre);
   return parts.join('\n\n');
@@ -31,9 +37,12 @@ interface Props {
   onUseFindings?: (a: Analysis) => void;
   /** Se llama al cargar un informe por enlace (para rellenar la Fase 1 y guardar el enlace). */
   onReportLoaded?: (r: G2Report, link: string) => void;
+  /** Modelos de zapatilla anotados en la sesión, para incluir sus fichas técnicas. */
+  shoeModels?: string[];
 }
 
-export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings, onReportLoaded }: Props) {
+export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings, onReportLoaded, shoeModels = [] }: Props) {
+  const { specs } = useShoeSpecs();
   const [key, setKey] = useState(getApiKey);
   const [editingKey, setEditingKey] = useState(!getApiKey());
   const [images, setImages] = useState<Img[]>([]);
@@ -81,7 +90,9 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
     setBusy(true);
     setError('');
     try {
-      const a = await analyzeReport(key, images, context, report ? reportToText(report) : '');
+      const models = [...new Set([...(report?.runs.map((r) => r.shoe) ?? []), ...shoeModels].filter((m) => m.trim()))];
+      const data = [report ? reportToText(report) : '', specsToText(models, specs)].filter(Boolean).join('\n\n');
+      const a = await analyzeReport(key, images, context, data);
       setResult(a);
       onResult?.(a);
     } catch (e) {
@@ -138,6 +149,18 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
               </tbody>
             </table>
           </div>
+        )}
+        {report && (
+          <>
+            <h4 className="block-title">Fichas técnicas de las zapatillas</h4>
+            {[...new Set(report.runs.map((r) => r.shoe))].map((m) => (
+              <div key={m} className="spec-row">
+                <b>{m}</b>
+                <ShoeSpecView modelo={m} compact />
+              </div>
+            ))}
+            <p className="hint small">Con las fichas, el análisis cruza drop, firmeza, placa, etc. con los datos del G2 para ver qué tipo de zapatilla le funciona.</p>
+          </>
         )}
         {report && <p className="hint small">Informe de {report.name || 'cliente'} · {report.date}. ER/SA/SC: energy return, shock absorption y stride consistency (0–10).</p>}
       </Card>
@@ -237,7 +260,7 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
 function AnalysisView({ a, onUseFindings }: { a: Analysis; onUseFindings?: (a: Analysis) => void }) {
   return (
     <>
-      <Card title="Qué decirle" aside={<CopyButton text={scriptText(a)} label="Copiar guion" />}>
+      <Card title="Qué decirle y qué hacer en la cinta" aside={<CopyButton text={scriptText(a)} label="Copiar guion" />}>
         <p className="say">{a.guion.apertura}</p>
         {a.guion.zapatilla && (
           <div className="point">
@@ -245,33 +268,16 @@ function AnalysisView({ a, onUseFindings }: { a: Analysis; onUseFindings?: (a: A
             <p className="say">{a.guion.zapatilla}</p>
           </div>
         )}
-        {a.guion.puntos.map((p, i) => {
-          const problem = findProblem(p.problema_id);
-          const ex = findExercise(p.problema_id, p.ejercicio_id);
-          return (
-            <div key={i} className="point">
-              <h4>
-                {i + 1}. {p.titulo} <span className="badge">{p.dato}</span>
-              </h4>
-              <p className="hint">{p.que_significa}</p>
-              <p className="say">“{p.que_le_dices}”</p>
-              {(ex || p.cue) && (
-                <p className="exercise-line">
-                  {ex && (
-                    <>
-                      <b>
-                        {problem?.name} · {ex.id} {ex.name}
-                      </b>{' '}
-                      — {ex.how}
-                      <br />
-                    </>
-                  )}
-                  {p.cue && <q>{p.cue}</q>}
-                </p>
-              )}
-            </div>
-          );
-        })}
+        {a.guion.puntos.map((p, i) => (
+          <div key={i} className="point">
+            <h4>
+              {i + 1}. {p.titulo} <span className="badge">{p.dato}</span>
+            </h4>
+            <p className="hint">{p.que_significa}</p>
+            <p className="say">“{p.que_le_dices}”</p>
+            {p.ejercicio && <LiveExerciseView e={p.ejercicio} />}
+          </div>
+        ))}
         <p className="say closing">{a.guion.cierre}</p>
         {onUseFindings && (
           <button className="btn" onClick={() => onUseFindings(a)}>
@@ -279,6 +285,18 @@ function AnalysisView({ a, onUseFindings }: { a: Analysis; onUseFindings?: (a: A
           </button>
         )}
       </Card>
+
+      {a.perfil_zapatilla && (
+        <Card title="Qué tipo de zapatilla le funciona">
+          <p className="say">{a.perfil_zapatilla.conclusion}</p>
+          <div className="chips">
+            {a.perfil_zapatilla.caracteristicas.map((c) => (
+              <span key={c} className="chip static on">{c}</span>
+            ))}
+          </div>
+          <p className="hint">{a.perfil_zapatilla.evidencia}</p>
+        </Card>
+      )}
 
       {a.avisos.length > 0 && (
         <Card title="Avisos">
@@ -322,11 +340,12 @@ function AnalysisView({ a, onUseFindings }: { a: Analysis; onUseFindings?: (a: A
         <p className="hint small">Comprueba los valores con el informe original antes de explicarlos.</p>
         {a.problemas.length > 0 && (
           <>
-            <h4 className="block-title">Problemas de la guía que encajan</h4>
+            <h4 className="block-title">Patrones a mejorar</h4>
             <ul className="bullets">
-              {a.problemas.map((p) => (
-                <li key={p.problema_id}>
-                  <b>{p.problema_id} · {findProblem(p.problema_id)?.name}</b> — {p.evidencia}
+              {a.problemas.map((p, i) => (
+                <li key={i}>
+                  <b>{p.problema}</b>
+                  {findProblem(p.problema_id) && <span className="hint"> (guía {p.problema_id})</span>} — {p.evidencia}
                 </li>
               ))}
             </ul>
@@ -334,5 +353,21 @@ function AnalysisView({ a, onUseFindings }: { a: Analysis; onUseFindings?: (a: A
         )}
       </Card>
     </>
+  );
+}
+
+export function LiveExerciseView({ e }: { e: LiveExerciseT }) {
+  return (
+    <div className="live-ex">
+      <b>En la cinta · {e.nombre}</b>
+      <span>{e.como}</span>
+      <q>{e.cue}</q>
+      <span>
+        <b>Notará:</b> {e.que_notara}
+      </span>
+      <span>
+        <b>En el G2:</b> {e.dato_a_vigilar}
+      </span>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { SessionReport } from './views/SessionReport';
 import { GuideView, ProtocolView, WhatsAppView } from './views/Reference';
 import { Card } from './ui';
 import { ReportAnalyzer } from './views/ReportAnalyzer';
+import { ShoeSpecsContext } from './lib/shoeSpecs';
 
 type Route =
   | { view: 'clients' }
@@ -25,7 +26,7 @@ const TABS: [Route['view'], string][] = [
 ];
 
 export default function App() {
-  const { db, upsertClient, deleteClient, upsertSession, deleteSession, replaceAll } = useDB();
+  const { db, upsertClient, deleteClient, upsertSession, deleteSession, replaceAll, saveSpec } = useDB();
   const [route, setRoute] = useState<Route>({ view: 'clients' });
   const [q, setQ] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -198,6 +199,7 @@ export default function App() {
   const activeTab = route.view === 'client' || route.view === 'session' ? 'clients' : route.view;
 
   return (
+    <ShoeSpecsContext.Provider value={{ specs: db.shoeSpecs, saveSpec }}>
     <div className="app">
       <header className="topbar screen-only">
         <button className="brand" onClick={() => setRoute({ view: 'clients' })}>
@@ -219,5 +221,6 @@ export default function App() {
         {content}
       </main>
     </div>
+    </ShoeSpecsContext.Provider>
   );
 }

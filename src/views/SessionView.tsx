@@ -10,14 +10,16 @@ import { parseG2Table } from '../lib/csv';
 import { Card, Choice, CopyButton, Text, Timer } from '../ui';
 import { ReportAnalyzer } from './ReportAnalyzer';
 import { reportToShoes } from '../lib/mmruns';
+import { ShoeSpecView } from './ShoeSpecView';
+import { LiveExerciseView } from './ReportAnalyzer';
 
 const STEPS = [
   { id: 'prep', label: 'Preparación' },
   { id: 'tests', label: 'Anamnesis y tests' },
   { id: 'obs', label: 'Observación libre' },
   { id: 'fase1', label: 'Fase 1 · Zapatillas' },
+  { id: 'informe', label: 'Informe G2 · Análisis' },
   { id: 'fase2', label: 'Fase 2 · Técnica' },
-  { id: 'informe', label: 'Informe G2 · Qué decirle' },
   { id: 'cierre', label: 'Cierre e informe' },
 ] as const;
 type StepId = (typeof STEPS)[number]['id'];
@@ -367,6 +369,7 @@ function ShoeCard({
       }
     >
       <Text label="Modelo / marca" value={shoe.modelo} onChange={(v) => onChange({ ...shoe, modelo: v })} />
+      <ShoeSpecView modelo={shoe.modelo} />
       {paste !== null && (
         <div className="paste">
           <textarea
@@ -442,6 +445,26 @@ function Phase2({ session, onChange }: StepProps) {
     });
 
   const pending = session.observados.filter((id) => !session.corrections.some((c) => c.problemId === id));
+  const fromAnalysis = (session.analisis?.guion.puntos ?? []).filter((p) => !session.corrections.some((c) => c.titulo === p.titulo));
+  const addFromAnalysis = (p: NonNullable<Session['analisis']>['guion']['puntos'][number]) =>
+    onChange({
+      ...session,
+      corrections: [
+        ...session.corrections,
+        {
+          id: uid(),
+          problemId: findProblem(p.problema_id) ? p.problema_id : '',
+          exerciseId: '',
+          titulo: p.titulo,
+          ejercicio: p.ejercicio,
+          observa: `${p.que_significa} (${p.dato})`,
+          tcAntes: '', tcDespues: '', cadAntes: '', cadDespues: '',
+          porque: p.ejercicio?.que_notara ?? '',
+          cue: p.ejercicio?.cue ?? '',
+          resultado: '',
+        },
+      ],
+    });
 
   return (
     <div className="stack">
@@ -457,7 +480,7 @@ function Phase2({ session, onChange }: StepProps) {
         return (
           <Card
             key={c.id}
-            title={`Problema ${i + 1}${problem ? ` — ${problem.name}` : ''}`}
+            title={`Problema ${i + 1}${c.titulo || problem ? ` — ${c.titulo || problem!.name}` : ''}`}
             aside={
               <button className="btn small ghost danger" onClick={() => onChange({ ...session, corrections: session.corrections.filter((x) => x.id !== c.id) })}>
                 Quitar
@@ -488,6 +511,7 @@ function Phase2({ session, onChange }: StepProps) {
                 {dCad !== null && <span className={dCad > 0 ? 'good' : 'bad'}>Cadencia {dCad > 0 ? '+' : ''}{dCad.toFixed(0)} ppm</span>}
               </p>
             )}
+            {c.ejercicio && <LiveExerciseView e={c.ejercicio} />}
             {problem && (
               <div className="exercises">
                 {problem.exercises.map((e) => (
@@ -511,6 +535,17 @@ function Phase2({ session, onChange }: StepProps) {
           </Card>
         );
       })}
+      {fromAnalysis.length > 0 && (
+        <Card title="Propuesto por el análisis del informe">
+          <div className="row wrap">
+            {fromAnalysis.map((p) => (
+              <button key={p.titulo} className="btn primary" onClick={() => addFromAnalysis(p)}>
+                + {p.titulo}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
       <div className="row wrap">
         {pending.map((id) => (
           <button key={id} className="btn" onClick={() => add(id)}>
@@ -550,7 +585,8 @@ export function sessionContext(session: Session, client: Client): string {
   if (winner?.modelo) lines.push(`Zapatilla elegida en fase 1: ${winner.modelo}`);
   for (const c of session.corrections) {
     const p = findProblem(c.problemId);
-    if (p) lines.push(`Trabajado en fase 2: ${p.name}${c.cue ? ` (cue "${c.cue}")` : ''}${c.resultado ? ` — ${c.resultado}` : ''}`);
+    const name = c.titulo || p?.name;
+    if (name) lines.push(`Trabajado en fase 2: ${name}${c.cue ? ` (cue "${c.cue}")` : ''}${c.resultado ? ` — ${c.resultado}` : ''}`);
   }
   return lines.join('\n');
 }
@@ -560,11 +596,13 @@ function Report({ session, client, onChange }: StepProps & { client: Client }) {
     <div className="stack">
       <p className="hint">
         Pega el enlace del informe que compartes con el cliente (o sube capturas). La app carga los datos del G2, rellena la
-        Fase 1 y te prepara qué decirle: máximo 3 puntos, con el dato, la explicación sencilla, la frase y el ejercicio de la guía.
+        Fase 1, busca la ficha de cada zapatilla y te prepara qué tipo de zapatilla le funciona y máximo 3 puntos para la Fase 2,
+        cada uno con un ejercicio sencillo para hacer en la cinta y notar en el momento.
       </p>
       <ReportAnalyzer
         context={sessionContext(session, client)}
         initial={session.analisis}
+        shoeModels={session.shoes.map((s) => s.modelo)}
         onResult={(a) => onChange({ ...session, analisis: a })}
         onReportLoaded={(r, link) => {
           const hasData = session.shoes.some((s) => Object.values(s.runs).some((run) => run.tc));
@@ -593,9 +631,9 @@ function Close({ session, client, onChange }: StepProps & { client: Client }) {
 
   const suggestedFindings = session.corrections
     .map((x) => {
-      const p = findProblem(x.problemId);
-      if (!p) return '';
-      return x.cue ? `${p.name} — trabajar cue "${x.cue}"` : p.name;
+      const name = x.titulo || findProblem(x.problemId)?.name;
+      if (!name) return '';
+      return x.cue ? `${name} — trabajar cue "${x.cue}"` : name;
     })
     .filter(Boolean);
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Client, Session, Shoe, G2Run } from './types';
 import { SPEEDS } from './data/protocol';
+import type { ShoeSpec } from './lib/shoeSpecs';
 
 // Los datos de clientes son confidenciales: se guardan solo en este navegador (localStorage).
 // Usa "Exportar copia" para hacer backup o pasar los datos a otro dispositivo.
@@ -10,9 +11,11 @@ const KEY = 'stridelab.g2.v1';
 export interface DB {
   clients: Client[];
   sessions: Session[];
+  /** Fichas técnicas de zapatillas por modelo (ver lib/shoeSpecs). */
+  shoeSpecs: Record<string, ShoeSpec>;
 }
 
-const empty: DB = { clients: [], sessions: [] };
+const empty: DB = { clients: [], sessions: [], shoeSpecs: {} };
 
 export const uid = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -24,7 +27,7 @@ function load(): DB {
     const raw = localStorage.getItem(KEY);
     if (!raw) return empty;
     const parsed = JSON.parse(raw) as Partial<DB>;
-    return { clients: parsed.clients ?? [], sessions: parsed.sessions ?? [] };
+    return { clients: parsed.clients ?? [], sessions: parsed.sessions ?? [], shoeSpecs: parsed.shoeSpecs ?? {} };
   } catch {
     return empty;
   }
@@ -51,7 +54,7 @@ export function useDB() {
   }, []);
 
   const deleteClient = useCallback((id: string) => {
-    setDb((d) => ({ clients: d.clients.filter((c) => c.id !== id), sessions: d.sessions.filter((s) => s.clientId !== id) }));
+    setDb((d) => ({ ...d, clients: d.clients.filter((c) => c.id !== id), sessions: d.sessions.filter((s) => s.clientId !== id) }));
   }, []);
 
   const upsertSession = useCallback((s: Session) => {
@@ -65,9 +68,13 @@ export function useDB() {
     setDb((d) => ({ ...d, sessions: d.sessions.filter((s) => s.id !== id) }));
   }, []);
 
-  const replaceAll = useCallback((next: DB) => setDb(next), []);
+  const replaceAll = useCallback((next: DB) => setDb({ ...next, shoeSpecs: next.shoeSpecs ?? {} }), []);
 
-  return { db, upsertClient, deleteClient, upsertSession, deleteSession, replaceAll };
+  const saveSpec = useCallback((key: string, spec: ShoeSpec) => {
+    setDb((d) => ({ ...d, shoeSpecs: { ...d.shoeSpecs, [key]: spec } }));
+  }, []);
+
+  return { db, upsertClient, deleteClient, upsertSession, deleteSession, replaceAll, saveSpec };
 }
 
 export function newClient(): Client {

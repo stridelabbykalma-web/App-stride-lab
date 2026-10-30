@@ -63,10 +63,10 @@ export function SessionReport({ session, client }: { session: Session; client: C
       <h2>Fase 2 — Corrección técnica</h2>
       {session.corrections.map((c, i) => (
         <div key={c.id}>
-          <h3>Problema {i + 1}: {findProblem(c.problemId)?.name ?? '—'}</h3>
+          <h3>Problema {i + 1}: {c.titulo || findProblem(c.problemId)?.name || '—'}</h3>
           <p><b>Se observa:</b> {c.observa}</p>
           <p>TC {c.tcAntes} → {c.tcDespues} ms · Cadencia {c.cadAntes} → {c.cadDespues}</p>
-          <p><b>Ejercicio:</b> {findExercise(c.problemId, c.exerciseId)?.name ?? '—'} · <b>Cue:</b> {c.cue}</p>
+          <p><b>Ejercicio:</b> {c.ejercicio?.nombre || findExercise(c.problemId, c.exerciseId)?.name || '—'} · <b>Cue:</b> {c.cue}</p>
           <p><b>Por qué:</b> {c.porque}</p>
           <p><b>Resultado:</b> {c.resultado}</p>
         </div>
@@ -80,11 +80,23 @@ export function SessionReport({ session, client }: { session: Session; client: C
           <ol>
             {session.analisis.guion.puntos.map((p, i) => (
               <li key={i}>
-                <b>{p.titulo}</b> ({p.dato}): {p.que_le_dices} {p.cue && <i>Cue: "{p.cue}"</i>}
+                <b>{p.titulo}</b> ({p.dato}): {p.que_le_dices}
+                {p.ejercicio && (
+                  <>
+                    <br />
+                    En la cinta: {p.ejercicio.nombre} — {p.ejercicio.como} <i>Cue: "{p.ejercicio.cue}"</i>. Notará: {p.ejercicio.que_notara}
+                  </>
+                )}
               </li>
             ))}
           </ol>
           <p>{session.analisis.guion.cierre}</p>
+          {session.analisis.perfil_zapatilla && (
+            <p>
+              <b>Tipo de zapatilla que le funciona:</b> {session.analisis.perfil_zapatilla.conclusion} (
+              {session.analisis.perfil_zapatilla.caracteristicas.join(', ')})
+            </p>
+          )}
         </>
       )}
 

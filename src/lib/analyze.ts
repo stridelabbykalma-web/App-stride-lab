@@ -26,48 +26,63 @@ export const setApiKey = (k: string) => {
   }
 };
 
-const PROBLEM_IDS = PROBLEMS.map((p) => p.id) as [string, ...string[]];
+// Ejercicio en directo: algo simple que el cliente hace en la cinta y nota en el momento.
+const LiveExercise = z.object({
+  nombre: z.string(),
+  como: z.string().describe('Qué hace el cliente en la cinta, en 1-2 frases: duración (20-30"), si se para la cinta o no.'),
+  cue: z.string().describe('La frase-imagen corta que se le dice mientras corre.'),
+  que_notara: z.string().describe('La sensación que debe notar para tomar consciencia del cambio.'),
+  dato_a_vigilar: z.string().describe('Qué valor del G2 debería moverse y hacia dónde (p. ej. "cadencia de 156 a ~165 ppm").'),
+});
 
 export const AnalysisSchema = z.object({
   resumen: z.string().describe('2-3 frases para el profesional: qué muestra el informe en conjunto.'),
   metricas: z.array(
     z.object({
       nombre: z.string(),
-      valor: z.string().describe('Valor tal cual aparece en la captura, con unidad.'),
-      contexto: z.string().describe('Zapatilla, velocidad o lado al que corresponde, si se ve. Vacío si no.'),
+      valor: z.string().describe('Valor con unidad, tal cual del informe.'),
+      contexto: z.string().describe('Zapatilla, velocidad o lado al que corresponde, si aplica. Vacío si no.'),
       valoracion: z.enum(['bien', 'mejorable', 'a_trabajar', 'sin_referencia']),
     }),
   ),
   problemas: z.array(
     z.object({
-      problema_id: z.enum(PROBLEM_IDS),
-      evidencia: z.string().describe('Qué dato o imagen del informe lo indica.'),
+      problema: z.string().describe('Nombre corto del patrón a mejorar.'),
+      problema_id: z.string().describe('Id de la guía de ejemplo (01-15) si coincide, o vacío.'),
+      evidencia: z.string().describe('Qué dato del informe lo indica.'),
     }),
   ),
+  perfil_zapatilla: z.object({
+    conclusion: z.string().describe('Qué tipo de zapatilla le funciona mejor, en una frase para el profesional.'),
+    caracteristicas: z.array(z.string()).describe('Rasgos concretos, p. ej. "Drop 6-8 mm", "Amortiguación media-firme", "Con placa solo para ritmos rápidos".'),
+    evidencia: z.string().describe('Qué comparación de datos (a la misma velocidad) y de fichas lo apoya, y cuánta confianza da.'),
+  }),
   guion: z.object({
     apertura: z.string().describe('Primera frase para el cliente, positiva y concreta.'),
-    zapatilla: z.string().describe('Qué decirle sobre la zapatilla, si el informe compara zapatillas. Vacío si no aplica.'),
+    zapatilla: z.string().describe('Qué decirle sobre la zapatilla y el tipo de zapatilla que le va. Vacío si no aplica.'),
     puntos: z.array(
       z.object({
         titulo: z.string(),
         dato: z.string().describe('El número del informe en el que se apoya.'),
         que_significa: z.string().describe('Explicación sencilla para el corredor, sin jerga.'),
         que_le_dices: z.string().describe('Frase literal para decirle en voz alta, tuteando.'),
-        problema_id: z.string().describe('Id de la guía (01-15) si aplica, o vacío.'),
-        ejercicio_id: z.string().describe('E01, E02 o E03 de ese problema, o vacío.'),
-        cue: z.string().describe('Cue de la guía para trabajarlo, o vacío.'),
+        problema_id: z.string().describe('Id de la guía de ejemplo (01-15) si coincide, o vacío.'),
+        ejercicio: LiveExercise,
       }),
     ),
     cierre: z.string().describe('Frase de cierre: "Lo más importante que te llevas hoy es: zapatilla X, trabajar Y, y Z."'),
   }),
   hallazgos_mensaje: z.array(z.string()).describe('Exactamente 3 líneas cortas para el WhatsApp post-sesión.'),
-  avisos: z.array(z.string()).describe('Datos ilegibles, dudas o señales para derivar a fisioterapia. Vacío si nada.'),
+  avisos: z.array(z.string()).describe('Datos dudosos o señales para derivar a fisioterapia. Vacío si nada.'),
 });
 
 export type Analysis = z.infer<typeof AnalysisSchema>;
+export type LiveExerciseT = z.infer<typeof LiveExercise>;
 
 const guideText = PROBLEMS.map(
-  (p) => `${p.id} ${p.name}\n` + p.exercises.map((e) => `  ${e.id} ${e.name} — cue: "${e.cue}" — por qué: ${e.why}`).join('\n'),
+  (p) =>
+    `${p.id} ${p.name}\n` +
+    p.exercises.map((e) => `  ${e.id} ${e.name}: ${e.how} — cue: "${e.cue}" — por qué: ${e.why}`).join('\n'),
 ).join('\n');
 
 const findingsText = FINDING_TO_G2.map((f) => `- ${f.finding} → ${f.g2}`).join('\n');
@@ -75,23 +90,32 @@ const findingsText = FINDING_TO_G2.map((f) => `- ${f.finding} → ${f.g2}`).join
 // Prompt estable (se cachea): no meter aquí nada que cambie entre sesiones.
 const SYSTEM = `Trabajas con el equipo de Stride Lab by Kalma (Cassà de la Selva, Girona), un centro de análisis biomecánico de carrera que usa el sistema MotionMetrix G2 en cinta (informes en mmruns.com).
 
-Te pasan los datos del informe del G2 de un cliente (capturas y/o los valores exactos del informe) y, a veces, contexto de la sesión (ficha, tests clínicos, datos anotados). Tu trabajo es leer el informe y preparar lo que el profesional le va a decir al cliente al terminar.
+Te pasan los datos del informe del G2 de un cliente (valores exactos del informe y/o capturas), a menudo las fichas técnicas de las zapatillas probadas y, a veces, contexto de la sesión (ficha, tests clínicos, notas). Preparas lo que el profesional va a trabajar y decir en la sesión.
 
 Cómo leer el informe:
-- Usa solo los valores que te pasan o se ven en las capturas. Si algo no se lee bien, dilo en "avisos" en vez de inventarlo.
-- Si el informe trae rangos de referencia, colores o marcas (verde/amarillo/rojo), básate en ellos para la valoración. Si no hay referencia, marca "sin_referencia" salvo que el dato sea claramente bueno o malo para un corredor popular (p. ej. cadencia objetivo habitual 170-180 ppm).
-- Métricas típicas: tiempo de contacto (TC, ms), cadencia (ppm), simetría/balance izquierda-derecha, oscilación vertical (cm), longitud de zancada, tiempo de vuelo, ángulos de rodilla/cadera/tronco, pisada.
-- Si hay varias zapatillas, la mejor es la de TC más bajo, mejor simetría y oscilación vertical más estable.
+- Usa solo los valores que te pasan o se ven en las capturas. Si algo es dudoso (p. ej. peso y talla intercambiados), dilo en "avisos" en vez de inventar.
+- Si hay rangos de referencia o colores, básate en ellos. Si no, marca "sin_referencia" salvo que el dato sea claramente bueno o malo para un corredor popular (p. ej. cadencia habitual 165-180 ppm).
+- En Stride Lab cada zapatilla se prueba a velocidades distintas: compara zapatillas solo a la misma velocidad.
+
+Qué tipo de zapatilla le funciona ("perfil_zapatilla"):
+- Cruza el rendimiento a la misma velocidad (tiempo de contacto, balance izquierda/derecha, oscilación vertical, overstride, loading rate y las puntuaciones energy return / shock absorption / stride consistency) con las fichas técnicas (drop, stack, firmeza, reactividad, placa, peso, rocker).
+- Concluye qué rasgos le sientan mejor (p. ej. "con drop bajo acorta el overstride", "con espuma firme baja el tiempo de contacto") y cuáles no. Con pocas pasadas es una tendencia: dilo en "evidencia".
+- Si falta ficha de alguna zapatilla, razona con lo que haya y menciónalo.
+
+Ejercicios en directo (lo más importante):
+- Para cada punto propón UN ejercicio sencillo que el cliente pueda hacer en la cinta en ese momento (20-30", o un drill de 10-20" fuera de la cinta y subir directo) y NOTE enseguida: una imagen mental, un foco de atención, un apoyo externo (metrónomo, inclinación 1-2%, mirada) o un contraste exagerar/corregir.
+- Debe generar una sensación clara para que tome consciencia de lo que hace ("que_notara") y un cambio visible en el G2 ("dato_a_vigilar"), para enseñárselo en pantalla.
+- Nada de ejercicios de fuerza, de casa ni de varias semanas: eso va al informe de valoración posterior.
+- La guía de abajo es un EJEMPLO del estilo y del nivel de sencillez. Si el problema está en la guía, puedes usar su ejercicio y su cue tal cual; si no, crea uno nuevo con el mismo estilo.
 
 Cómo preparar el guion:
-- Máximo 3 puntos clave. Más no los recuerda. Elige los que más impacto tienen y que se pueden trabajar.
-- Habla al cliente de tú, en castellano cercano, frases cortas, sin jerga técnica (o explicándola en una frase). Positivo y concreto: primero lo que hace bien.
-- Cada punto se apoya en un dato del informe y, si encaja, en un problema de la guía de Stride Lab con su ejercicio y su cue (usa los textos de la guía tal cual).
-- Si te pasan tests clínicos alterados, relaciónalos con el dato del G2 (no expliques solo el número).
-- No diagnostiques lesiones ni prometas resultados. Si algo sugiere dolor o patología, ponlo en "avisos" para que lo valore el fisio.
-- "hallazgos_mensaje": 3 líneas muy cortas, estilo "TC alto — trabajar cue brasas calientes", "Ligera asimetría pierna izquierda", "Cadencia — objetivo 175 ppm".
+- Máximo 3 puntos clave. Elige los de más impacto que se puedan notar hoy.
+- Habla al cliente de tú, en castellano cercano, frases cortas, sin jerga (o explicada en una frase). Primero lo que hace bien.
+- Si te pasan tests clínicos alterados, relaciónalos con el dato del G2.
+- No diagnostiques lesiones ni prometas resultados. Lo que sugiera dolor o patología va a "avisos" para el fisio.
+- "hallazgos_mensaje": 3 líneas muy cortas, estilo "TC alto — cue brasas calientes", "Ligera asimetría pierna izquierda", "Cadencia — objetivo 165 ppm".
 
-Guía de Stride Lab — 15 problemas y sus ejercicios en cinta:
+Guía de ejemplo de Stride Lab — problemas y ejercicios en cinta:
 ${guideText}
 
 Relación hallazgo clínico → reflejo en el G2:
