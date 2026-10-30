@@ -15,7 +15,10 @@ import {
 import { findProblem } from '../data/problems';
 import { specKey, specsToText, useShoeSpecs } from '../lib/shoeSpecs';
 import { ShoeSpecView } from './ShoeSpecView';
-import { loadReport, reportToText, type G2Report } from '../lib/mmruns';
+import { InformeLink } from './InformeLink';
+import { reportToText, type G2Report } from '../lib/mmruns';
+
+const LAST_LINK = 'stridelab.ultimoEnlaceInforme';
 import { Card, CopyButton } from '../ui';
 
 type Img = ImageInput & { preview: string; id: number };
@@ -49,11 +52,17 @@ interface Props {
   onUseFindings?: (a: Analysis) => void;
   /** Se llama al cargar un informe por enlace (para rellenar la Fase 1 y guardar el enlace). */
   onReportLoaded?: (r: G2Report, link: string) => void;
+  /** Enlace e informe guardados en la sesión. Sin ellos, el componente guarda los suyos. */
+  link?: string;
+  onLinkChange?: (link: string) => void;
+  report?: G2Report | null;
+  reportUpdatedAt?: string;
   /** Modelos de zapatilla anotados en la sesión, para incluir sus fichas técnicas. */
   shoeModels?: string[];
 }
 
-export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings, onReportLoaded, shoeModels = [] }: Props) {
+export function ReportAnalyzer(props: Props) {
+  const { context = '', initial, onResult, onUseFindings, onReportLoaded, shoeModels = [] } = props;
   const { specs, saveSpec } = useShoeSpecs();
   const [key, setKey] = useState(getApiKey);
   const [editingKey, setEditingKey] = useState(!getApiKey());
@@ -61,9 +70,33 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | undefined>(initial);
-  const [link, setLink] = useState('');
-  const [report, setReport] = useState<G2Report | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [ownLink, setOwnLink] = useState(() => {
+    try {
+      return localStorage.getItem(LAST_LINK) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const [ownReport, setOwnReport] = useState<G2Report | null>(null);
+  const [ownUpdated, setOwnUpdated] = useState('');
+  const link = props.link ?? ownLink;
+  const report = props.report !== undefined ? props.report : ownReport;
+  const setLink = (l: string) => {
+    if (props.onLinkChange) props.onLinkChange(l);
+    else {
+      setOwnLink(l);
+      try {
+        localStorage.setItem(LAST_LINK, l);
+      } catch {
+        // sin almacenamiento
+      }
+    }
+  };
+  const handleLoaded = (r: G2Report, l: string) => {
+    setOwnReport(r);
+    setOwnUpdated(new Date().toISOString());
+    onReportLoaded?.(r, l);
+  };
   const [showApi, setShowApi] = useState(!!getApiKey());
   const [pasted, setPasted] = useState('');
 
@@ -84,19 +117,6 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
     }
   };
 
-  const fetchReport = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const r = await loadReport(link);
-      setReport(r);
-      onReportLoaded?.(r, link.trim());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se ha podido cargar el informe.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const addFiles = async (files: Iterable<Blob>) => {
     const list = [...files].filter((f) => f.type.startsWith('image/'));
@@ -147,17 +167,13 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
   return (
     <div className="stack">
       <Card title="Enlace del informe (el mismo que se comparte con el cliente)">
-        <div className="row wrap">
-          <input
-            className="grow"
-            value={link}
-            placeholder="https://shared.mmruns.com/areport2/index.php?r=…"
-            onChange={(e) => setLink(e.target.value)}
-          />
-          <button className="btn" disabled={!link.trim() || loading} onClick={fetchReport}>
-            {loading ? 'Cargando…' : 'Cargar informe'}
-          </button>
-        </div>
+        <InformeLink
+          link={link}
+          onLinkChange={setLink}
+          report={report}
+          onLoaded={handleLoaded}
+          updatedAt={props.reportUpdatedAt ?? ownUpdated}
+        />
         {report && (
           <div className="table-wrap">
             <table className="table">

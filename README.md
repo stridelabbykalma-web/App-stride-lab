@@ -72,6 +72,11 @@ con el cliente (`https://shared.mmruns.com/areport2/index.php?r=CÓDIGO`) y puls
   el mensaje post-sesión.
 - **Analizar** prepara el guion con esos datos, sin capturas. Las capturas siguen sirviendo como alternativa.
 
+**El enlace se guarda con la sesión.** Se pega una vez, en la Fase 1 o en el paso de análisis. Cada vez que se
+abre la sesión se vuelve a consultar mmruns, y con **Actualizar** (o «Actualizar solo cada 30 s») se recogen las
+pasadas nuevas a medida que se graban. Las zapatillas de la Fase 1 se completan sin perder la ganadora elegida ni las
+zapatillas añadidas a mano.
+
 Cómo funciona: el enlace compartido no pide inicio de sesión. Al abrirlo, mmruns da un permiso temporal con el que
 su API (`/api/report/CÓDIGO`) devuelve el informe en JSON. El navegador no deja a la app llamar a esa API
 directamente, así que pasa por una función mínima, `api/mmruns.ts`, que solo acepta códigos de informe y no guarda

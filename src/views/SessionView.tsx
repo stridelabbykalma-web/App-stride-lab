@@ -9,7 +9,8 @@ import { buildPostMessage, missingFields, whatsappLink } from '../lib/postMessag
 import { parseG2Table } from '../lib/csv';
 import { Card, Choice, CopyButton, Text, Timer } from '../ui';
 import { ReportAnalyzer } from './ReportAnalyzer';
-import { reportToShoes } from '../lib/mmruns';
+import { mergeReportShoes, type G2Report } from '../lib/mmruns';
+import { InformeLink } from './InformeLink';
 import { ShoeSpecView } from './ShoeSpecView';
 import { LiveExerciseView } from './ReportAnalyzer';
 
@@ -240,6 +241,19 @@ const METRICS: { key: keyof G2Run; label: string; unit: string }[] = [
   { key: 'oscilacion', label: 'Oscilación', unit: 'cm' },
 ];
 
+/** Guarda el informe descargado en la sesión y actualiza las zapatillas de la Fase 1 sin perder la ganadora. */
+function withReport(session: Session, r: G2Report, link: string): Session {
+  const shoes = mergeReportShoes(session.shoes, r);
+  return {
+    ...session,
+    shoes: shoes.length ? shoes : session.shoes,
+    winnerShoeId: shoes.some((s) => s.id === session.winnerShoeId) ? session.winnerShoeId : '',
+    informe: r,
+    informeActualizado: new Date().toISOString(),
+    cierre: { ...session.cierre, enlaceInforme: link },
+  };
+}
+
 function Phase1({ session, onChange }: StepProps) {
   const ranking = useMemo(() => rankShoes(session.shoes), [session.shoes]);
   const setShoe = (shoe: Shoe) => onChange({ ...session, shoes: session.shoes.map((s) => (s.id === shoe.id ? shoe : s)) });
@@ -249,6 +263,19 @@ function Phase1({ session, onChange }: StepProps) {
   return (
     <div className="stack">
       <PhaseHeader id="fase1" />
+      <Card title="Informe de mmruns">
+        <InformeLink
+          link={session.cierre.enlaceInforme}
+          onLinkChange={(l) => onChange({ ...session, cierre: { ...session.cierre, enlaceInforme: l } })}
+          report={session.informe ?? null}
+          updatedAt={session.informeActualizado}
+          onLoaded={(r, link) => onChange(withReport(session, r, link))}
+        />
+        <p className="hint small">
+          Pega el enlace una vez: se guarda con la sesión. Pulsa «Actualizar» (o activa la actualización automática) después de
+          cada pasada y las zapatillas de abajo se rellenan solas.
+        </p>
+      </Card>
       {session.shoes.map((shoe, i) => (
         <ShoeCard
           key={shoe.id}
@@ -604,14 +631,11 @@ function Report({ session, client, onChange }: StepProps & { client: Client }) {
         initial={session.analisis}
         shoeModels={session.shoes.map((s) => s.modelo)}
         onResult={(a) => onChange({ ...session, analisis: a })}
-        onReportLoaded={(r, link) => {
-          const hasData = session.shoes.some((s) => Object.values(s.runs).some((run) => run.tc));
-          if (hasData && !confirm('¿Sustituir las zapatillas de la Fase 1 por las del informe?')) {
-            onChange({ ...session, cierre: { ...session.cierre, enlaceInforme: link } });
-            return;
-          }
-          onChange({ ...session, shoes: reportToShoes(r), winnerShoeId: '', cierre: { ...session.cierre, enlaceInforme: link } });
-        }}
+        link={session.cierre.enlaceInforme}
+        onLinkChange={(l) => onChange({ ...session, cierre: { ...session.cierre, enlaceInforme: l } })}
+        report={session.informe ?? null}
+        reportUpdatedAt={session.informeActualizado}
+        onReportLoaded={(r, link) => onChange(withReport(session, r, link))}
         onUseFindings={(a) =>
           onChange({
             ...session,

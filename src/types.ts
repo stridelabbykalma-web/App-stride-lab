@@ -1,5 +1,6 @@
 import type { SpeedId } from './data/protocol';
 import type { Analysis, LiveExerciseT } from './lib/analyze';
+import type { G2Report } from './lib/mmruns';
 
 /** Ficha de cliente — Análisis biomecánico. Todos los campos son texto libre o enumerados. */
 export interface Client {
@@ -108,6 +109,9 @@ export interface Session {
   corrections: Correction[];
   /** Lectura del informe G2 a partir de capturas y guion para el cliente. */
   analisis?: Analysis;
+  /** Último informe descargado de mmruns (el enlace está en cierre.enlaceInforme). */
+  informe?: G2Report;
+  informeActualizado?: string;
   cierre: {
     tcMedioFinal: string;
     cadenciaObjetivo: string;

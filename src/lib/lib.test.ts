@@ -201,3 +201,24 @@ describe('ficha desde WhatsApp', () => {
     expect(p).toContain('Alex: corro 4 años');
   });
 });
+
+import { mergeReportShoes } from './mmruns';
+
+describe('actualizar la Fase 1 con nuevas pasadas', () => {
+  const metric = (c: number, l = 0, r = 0) => ({ ComboVal: c, LeftVal: l, RightVal: r, Rating: 0 });
+  const run = (shoe: string, kmh: number, tc: number) => ({
+    Shoe: shoe, SetSpeed_kph: metric(kmh), TTStepRate_spm: metric(80), TTContactTime_ms: metric(tc, tc, tc),
+  });
+  const report = (runs: ReturnType<typeof run>[]) => parseReport({ report_id: 'ABCDEFGH12', runs });
+
+  it('conserva el id (y la ganadora), añade nuevas pasadas y mantiene las zapatillas a mano', () => {
+    const first = mergeReportShoes([newShoe()], report([run('NIKE_PEGASUS 41', 9, 300)]));
+    expect(first).toHaveLength(1);
+    const manual = { ...newShoe('Hoka Clifton 9') };
+    manual.runs.V1.tc = '310';
+    const second = mergeReportShoes([...first, manual], report([run('NIKE_PEGASUS 41', 9, 300), run('NIKE_PEGASUS 41', 11, 270), run('ASICS_NOVABLAST 5', 9, 290)]));
+    expect(second.map((s) => s.modelo)).toEqual(['Nike Pegasus 41', 'Asics Novablast 5', 'Hoka Clifton 9']);
+    expect(second[0].id).toBe(first[0].id);
+    expect(second[0].runs.V2.tc).toBe('270');
+  });
+});

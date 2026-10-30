@@ -149,6 +149,25 @@ export function reportToShoes(report: G2Report): Shoe[] {
   });
 }
 
+const sameModel = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9]+/g, '') === b.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+/**
+ * Actualiza las zapatillas de la Fase 1 con el informe: las del informe se rellenan con sus datos
+ * (conservando su id, para no perder la ganadora elegida), las añadidas a mano se mantienen
+ * y se quitan las filas vacías.
+ */
+export function mergeReportShoes(existing: Shoe[], report: G2Report): Shoe[] {
+  const fromReport = reportToShoes(report);
+  const merged = fromReport.map((s) => {
+    const prev = existing.find((e) => sameModel(e.modelo, s.modelo));
+    return prev ? { ...s, id: prev.id } : s;
+  });
+  const manual = existing.filter(
+    (e) => !fromReport.some((s) => sameModel(e.modelo, s.modelo)) && (e.modelo.trim() || Object.values(e.runs).some((r) => r.tc)),
+  );
+  return [...merged, ...manual];
+}
+
 /** Resumen en texto del informe para que Claude prepare el guion. */
 export function reportToText(report: G2Report): string {
   const lines = [
