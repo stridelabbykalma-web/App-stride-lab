@@ -44,6 +44,24 @@ guarda solo en ese dispositivo. Cada análisis cuesta unos céntimos. Las captur
 para leerlas: no subas capturas con datos que el cliente no haya autorizado. El prompt y la lógica están en
 `src/lib/analyze.ts`.
 
+## Cargar el informe con el enlace compartido (recomendado)
+
+En el paso **Informe G2 · Qué decirle** (o en la pestaña **Leer informe G2**) pega el enlace que se comparte
+con el cliente (`https://shared.mmruns.com/areport2/index.php?r=CÓDIGO`) y pulsa **Cargar informe**:
+
+- Se descargan los **valores exactos** del informe: cadencia, tiempo de contacto izquierda/derecha, balance,
+  overstride, oscilación vertical, fuerzas, ángulos, puntuaciones de zapatilla (energy return, shock absorption,
+  stride consistency) y perfil de corredor.
+- Se **rellena la Fase 1** sola: cada zapatilla con sus velocidades en V1/V2/V3. El enlace queda guardado para
+  el mensaje post-sesión.
+- **Analizar** prepara el guion con esos datos, sin capturas. Las capturas siguen sirviendo como alternativa.
+
+Cómo funciona: el enlace compartido no pide inicio de sesión. Al abrirlo, mmruns da un permiso temporal con el que
+su API (`/api/report/CÓDIGO`) devuelve el informe en JSON. El navegador no deja a la app llamar a esa API
+directamente, así que pasa por una función mínima, `api/mmruns.ts`, que solo acepta códigos de informe y no guarda
+nada. En local la sirve `npm run dev` y en producción se publica en **Vercel**: importas el repositorio en
+vercel.com, sin configurar nada más. En GitHub Pages esta parte no funciona porque no ejecuta funciones.
+
 ## Leer el informe directamente de mmruns.com (agent-browser)
 
 Para no tener que hacer capturas: Claude Code, en tu ordenador, abre el informe en mmruns.com con

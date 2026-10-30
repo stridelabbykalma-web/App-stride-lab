@@ -75,10 +75,10 @@ const findingsText = FINDING_TO_G2.map((f) => `- ${f.finding} → ${f.g2}`).join
 // Prompt estable (se cachea): no meter aquí nada que cambie entre sesiones.
 const SYSTEM = `Trabajas con el equipo de Stride Lab by Kalma (Cassà de la Selva, Girona), un centro de análisis biomecánico de carrera que usa el sistema MotionMetrix G2 en cinta (informes en mmruns.com).
 
-Te pasan capturas del informe del G2 de un cliente y, a veces, contexto de la sesión (ficha, tests clínicos, datos anotados). Tu trabajo es leer el informe y preparar lo que el profesional le va a decir al cliente al terminar.
+Te pasan los datos del informe del G2 de un cliente (capturas y/o los valores exactos del informe) y, a veces, contexto de la sesión (ficha, tests clínicos, datos anotados). Tu trabajo es leer el informe y preparar lo que el profesional le va a decir al cliente al terminar.
 
 Cómo leer el informe:
-- Usa solo los valores que se ven en las capturas. Si algo no se lee bien, dilo en "avisos" en vez de inventarlo.
+- Usa solo los valores que te pasan o se ven en las capturas. Si algo no se lee bien, dilo en "avisos" en vez de inventarlo.
 - Si el informe trae rangos de referencia, colores o marcas (verde/amarillo/rojo), básate en ellos para la valoración. Si no hay referencia, marca "sin_referencia" salvo que el dato sea claramente bueno o malo para un corredor popular (p. ej. cadencia objetivo habitual 170-180 ppm).
 - Métricas típicas: tiempo de contacto (TC, ms), cadencia (ppm), simetría/balance izquierda-derecha, oscilación vertical (cm), longitud de zancada, tiempo de vuelo, ángulos de rodilla/cadera/tronco, pisada.
 - Si hay varias zapatillas, la mejor es la de TC más bajo, mejor simetría y oscilación vertical más estable.
@@ -102,7 +102,7 @@ export interface ImageInput {
   base64: string;
 }
 
-export async function analyzeReport(apiKey: string, images: ImageInput[], sessionContext: string): Promise<Analysis> {
+export async function analyzeReport(apiKey: string, images: ImageInput[], sessionContext: string, reportData = ''): Promise<Analysis> {
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
 
   const response = await client.beta.messages.parse({
@@ -122,9 +122,13 @@ export async function analyzeReport(apiKey: string, images: ImageInput[], sessio
           })),
           {
             type: 'text',
-            text: sessionContext.trim()
-              ? `Contexto de la sesión:\n${sessionContext}\n\nLee las capturas del informe G2 y prepara el guion.`
-              : 'Lee las capturas del informe G2 y prepara el guion.',
+            text: [
+              reportData && `Datos del informe:\n${reportData}`,
+              sessionContext.trim() && `Contexto de la sesión:\n${sessionContext}`,
+              images.length ? 'Lee las capturas del informe G2 y prepara el guion.' : 'Prepara el guion a partir de los datos del informe.',
+            ]
+              .filter(Boolean)
+              .join('\n\n'),
           },
         ],
       },

@@ -33,10 +33,11 @@ describe('rankShoes', () => {
     expect(rankShoes([a, b])[0].shoeId).toBe(a.id);
   });
 
-  it('ignora zapatillas sin datos y devuelve vacío si no hay ninguno', () => {
+  it('no puntúa si no hay al menos dos zapatillas a la misma velocidad', () => {
     expect(rankShoes([newShoe('X')])).toEqual([]);
     const a = shoe('A', { V1: [250, 50, 8] });
-    expect(rankShoes([a, newShoe('vacía')]).map((r) => r.shoeId)).toEqual([a.id]);
+    expect(rankShoes([a, newShoe('vacía')])).toEqual([]);
+    expect(rankShoes([a, shoe('B', { V2: [240, 50, 8] })])).toEqual([]);
   });
 });
 
@@ -60,5 +61,57 @@ describe('parseG2Table', () => {
     expect(mapped.sort()).toEqual(['cadencia', 'kmh', 'oscilacion', 'simetria', 'tc']);
     expect(runs[0]).toEqual({ kmh: '9.5', tc: '262', cadencia: '164', simetria: '49.2', oscilacion: '8.9' });
     expect(runs[1].tc).toBe('248');
+  });
+});
+
+import { parseReport, reportCode, reportToShoes, shoeName, type RawReport } from './mmruns';
+
+describe('informe compartido de mmruns', () => {
+  const metric = (c: number, l = 0, r = 0, rating = 0) => ({ ComboVal: c, LeftVal: l, RightVal: r, Rating: rating });
+  const run = (shoe: string, kmh: number, tc: [number, number]) => ({
+    Shoe: shoe,
+    SetSpeed_kph: metric(kmh),
+    TTStepRate_spm: metric(80),
+    TTContactTime_ms: metric((tc[0] + tc[1]) / 2, tc[0], tc[1]),
+    TTVerticalDisp_cm: metric(8.04),
+    EnergyReturn: metric(20, 0, 0, 3.456),
+  });
+  const raw: RawReport = {
+    report_id: 'ABCDEFGH12',
+    name: 'Prueba',
+    created_at: '2026-06-12 15:34:46',
+    runs: [run('ADIDAS_ ADIOS PRO 4', 9, [300, 310]), run('SALOMON_AERO BLAZE 2', 9, [290, 290]), run('SALOMON_AERO BLAZE 2', 11, [260, 270])],
+  };
+
+  it('extrae el código del enlace', () => {
+    expect(reportCode('https://shared.mmruns.com/areport2/index.php?r=B87G4WH8H3SUNGGD')).toBe('B87G4WH8H3SUNGGD');
+    expect(reportCode('b87g4wh8h3sunggd')).toBe('B87G4WH8H3SUNGGD');
+    expect(reportCode('https://evil.example/?x=1')).toBeNull();
+  });
+
+  it('convierte cadencia a pasos/min, calcula el balance y limpia el nombre', () => {
+    const r = parseReport(raw);
+    expect(shoeName('ADIDAS_ ADIOS PRO 4')).toBe('Adidas Adios Pro 4');
+    expect(r.runs[0]).toMatchObject({ shoe: 'Adidas Adios Pro 4', cadence: 160, contactMs: 305, balanceL: 49.2, verticalDispCm: 8, energyReturn: 3.46 });
+    expect(r.date).toBe('2026-06-12');
+  });
+
+  it('agrupa por zapatilla y coloca las velocidades en V1/V2', () => {
+    const shoes = reportToShoes(parseReport(raw));
+    expect(shoes.map((s) => s.modelo)).toEqual(['Adidas Adios Pro 4', 'Salomon Aero Blaze 2']);
+    expect(shoes[1].runs.V1.tc).toBe('290');
+    expect(shoes[1].runs.V2.kmh).toBe('11');
+    expect(shoes[0].runs.V2.tc).toBe('');
+  });
+});
+
+describe('rankShoes con velocidades distintas por zapatilla', () => {
+  it('compara cada zapatilla solo a las velocidades que comparte con otras', () => {
+    const a = shoe('A', { V1: [320, 49.8, 7.9] });
+    const b = shoe('B', { V2: [273, 49.8, 8.7], V3: [261, 49.3, 8.0] });
+    const c = shoe('C', { V1: [315, 49.6, 8.8], V2: [281, 48.8, 9.6], V3: [261, 49.3, 8.6] });
+    const ranking = rankShoes([a, b, c]);
+    expect(ranking.map((r) => r.shoeId)).toEqual([b.id, a.id, c.id]);
+    expect(ranking.find((r) => r.shoeId === c.id)!.speeds).toEqual(['V1', 'V2', 'V3']);
   });
 });

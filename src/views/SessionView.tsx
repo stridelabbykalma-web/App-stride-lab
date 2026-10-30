@@ -9,6 +9,7 @@ import { buildPostMessage, missingFields, whatsappLink } from '../lib/postMessag
 import { parseG2Table } from '../lib/csv';
 import { Card, Choice, CopyButton, Text, Timer } from '../ui';
 import { ReportAnalyzer } from './ReportAnalyzer';
+import { reportToShoes } from '../lib/mmruns';
 
 const STEPS = [
   { id: 'prep', label: 'Preparación' },
@@ -268,7 +269,7 @@ function Phase1({ session, onChange }: StepProps) {
 
       <Card title="Decisión · zapatilla ganadora">
         {ranking.length === 0 ? (
-          <p className="hint">Introduce al menos el TC de una velocidad en cada zapatilla para ver la comparativa.</p>
+          <p className="hint">Introduce el TC de al menos dos zapatillas a la misma velocidad para ver la comparativa.</p>
         ) : (
           <>
             <table className="table">
@@ -286,7 +287,9 @@ function Phase1({ session, onChange }: StepProps) {
               <tbody>
                 {ranking.map((r) => (
                   <tr key={r.shoeId} className={r.shoeId === session.winnerShoeId ? 'win' : ''}>
-                    <td>{nameOf(r.shoeId)}</td>
+                    <td>
+                      {nameOf(r.shoeId)} <small className="hint">({r.speeds.join(', ')})</small>
+                    </td>
                     <td className="num">{r.tc?.toFixed(0) ?? '—'} ms</td>
                     <td className="num">{r.cadencia?.toFixed(0) ?? '—'}</td>
                     <td className="num">{r.asimetria !== null ? `±${r.asimetria.toFixed(1)}%` : '—'}</td>
@@ -302,8 +305,8 @@ function Phase1({ session, onChange }: StepProps) {
               </tbody>
             </table>
             <p className="hint">
-              Sugerencia: <b>{nameOf(suggested!)}</b>. Puntuación = TC 50% · simetría 30% · oscilación 20%, comparando solo las
-              velocidades medidas en todas las zapatillas. La decisión final es tuya.
+              Sugerencia: <b>{nameOf(suggested!)}</b>. Puntuación = TC 50% · simetría 30% · oscilación 20%, comparando solo a la
+              misma velocidad (entre paréntesis, las velocidades comparadas). La decisión final es tuya.
             </p>
           </>
         )}
@@ -556,13 +559,21 @@ function Report({ session, client, onChange }: StepProps & { client: Client }) {
   return (
     <div className="stack">
       <p className="hint">
-        Sube capturas del informe de mmruns.com (resumen, comparativa de zapatillas, gráficas…). La app las lee y te prepara qué
-        decirle al cliente: máximo 3 puntos, con el dato, la explicación sencilla, la frase y el ejercicio de la guía.
+        Pega el enlace del informe que compartes con el cliente (o sube capturas). La app carga los datos del G2, rellena la
+        Fase 1 y te prepara qué decirle: máximo 3 puntos, con el dato, la explicación sencilla, la frase y el ejercicio de la guía.
       </p>
       <ReportAnalyzer
         context={sessionContext(session, client)}
         initial={session.analisis}
         onResult={(a) => onChange({ ...session, analisis: a })}
+        onReportLoaded={(r, link) => {
+          const hasData = session.shoes.some((s) => Object.values(s.runs).some((run) => run.tc));
+          if (hasData && !confirm('¿Sustituir las zapatillas de la Fase 1 por las del informe?')) {
+            onChange({ ...session, cierre: { ...session.cierre, enlaceInforme: link } });
+            return;
+          }
+          onChange({ ...session, shoes: reportToShoes(r), winnerShoeId: '', cierre: { ...session.cierre, enlaceInforme: link } });
+        }}
         onUseFindings={(a) =>
           onChange({
             ...session,

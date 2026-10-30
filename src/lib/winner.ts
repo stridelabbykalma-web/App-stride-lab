@@ -2,8 +2,9 @@ import type { Shoe } from '../types';
 import { SPEEDS, type SpeedId } from '../data/protocol';
 
 // Criterio de la guía de timing: gana la zapatilla con TC más bajo, mejor simetría
-// y oscilación vertical más estable. Se comparan solo velocidades medidas en todas las zapatillas,
-// para que una zapatilla sin V3 no salga beneficiada o penalizada.
+// y oscilación vertical más estable. Solo se comparan zapatillas a la misma velocidad: en cada
+// velocidad medida por 2 o más zapatillas se puntúan entre sí, y la nota de cada zapatilla es la
+// media de sus velocidades comparables. Así sirve aunque no todas se prueben a todas las velocidades.
 
 export const WEIGHTS = { tc: 0.5, simetria: 0.3, oscilacion: 0.2 } as const;
 
@@ -27,11 +28,11 @@ export interface ShoeScore extends ShoeAverages {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-/** Velocidades con TC registrado en todas las zapatillas que tienen algún dato. */
+const hasTc = (s: Shoe, id: SpeedId) => num(s.runs[id].tc) !== null;
+
+/** Velocidades medidas (con TC) en al menos dos zapatillas: las únicas en las que se puede comparar. */
 export function commonSpeeds(shoes: Shoe[]): SpeedId[] {
-  const withData = shoes.filter((s) => SPEEDS.some((sp) => num(s.runs[sp.id].tc) !== null));
-  if (!withData.length) return [];
-  return SPEEDS.map((s) => s.id).filter((id) => withData.every((s) => num(s.runs[id].tc) !== null));
+  return SPEEDS.map((s) => s.id).filter((id) => shoes.filter((s) => hasTc(s, id)).length >= 2);
 }
 
 export function averages(shoe: Shoe, speeds: SpeedId[]): ShoeAverages {
@@ -49,33 +50,48 @@ export function averages(shoe: Shoe, speeds: SpeedId[]): ShoeAverages {
   };
 }
 
-/**
- * Puntúa cada zapatilla de 0 a 100 (más es mejor) normalizando cada métrica entre zapatillas.
- * Devuelve la lista ordenada de mejor a peor. Si una métrica falta en alguna zapatilla se ignora para todas.
- */
-export function rankShoes(shoes: Shoe[]): ShoeScore[] {
-  const speeds = commonSpeeds(shoes);
-  if (!speeds.length) return [];
-  const avgs = shoes.map((s) => averages(s, speeds)).filter((a) => a.tc !== null);
-  if (!avgs.length) return [];
+type Metric = keyof typeof WEIGHTS;
+const metricOf = (x: ShoeAverages, m: Metric) => (m === 'simetria' ? x.asimetria : x[m]);
 
-  type Metric = keyof typeof WEIGHTS;
-  const get = (x: ShoeAverages, m: Metric) => (m === 'simetria' ? x.asimetria : x[m]);
-  const metrics = (Object.keys(WEIGHTS) as Metric[]).filter((m) => avgs.every((a) => get(a, m) !== null));
+/** Puntuación 0-1 de cada zapatilla frente a las demás medidas a una misma velocidad. */
+function scoreAtSpeed(shoes: Shoe[], id: SpeedId): Map<string, number> {
+  const avgs = shoes.filter((s) => hasTc(s, id)).map((s) => averages(s, [id]));
+  const metrics = (Object.keys(WEIGHTS) as Metric[]).filter((m) => avgs.every((a) => metricOf(a, m) !== null));
   const totalWeight = metrics.reduce((acc, m) => acc + WEIGHTS[m], 0);
-
-  const scored = avgs.map((a) => {
+  const out = new Map<string, number>();
+  for (const a of avgs) {
     let score = 0;
     for (const m of metrics) {
-      const values = avgs.map((x) => get(x, m) as number);
+      const values = avgs.map((x) => metricOf(x, m) as number);
       const min = Math.min(...values);
       const max = Math.max(...values);
       // menor es mejor en las tres métricas
-      const norm = max === min ? 1 : (max - (get(a, m) as number)) / (max - min);
-      score += norm * WEIGHTS[m];
+      score += (max === min ? 1 : (max - (metricOf(a, m) as number)) / (max - min)) * WEIGHTS[m];
     }
-    return { ...a, score: Math.round((score / totalWeight) * 100) };
-  });
+    out.set(a.shoeId, score / totalWeight);
+  }
+  return out;
+}
 
-  return scored.sort((x, y) => y.score - x.score || (x.tc ?? 0) - (y.tc ?? 0));
+export interface ShoeScoreDetail extends ShoeScore {
+  /** Velocidades en las que se ha podido comparar esta zapatilla. */
+  speeds: SpeedId[];
+}
+
+/**
+ * Puntúa cada zapatilla de 0 a 100 (más es mejor) y devuelve la lista de mejor a peor.
+ * Las medias de TC, cadencia, etc. son de las velocidades comparables de cada zapatilla.
+ */
+export function rankShoes(shoes: Shoe[]): ShoeScoreDetail[] {
+  const speeds = commonSpeeds(shoes);
+  const perSpeed = new Map(speeds.map((id) => [id, scoreAtSpeed(shoes, id)]));
+  return shoes
+    .map((shoe) => {
+      const own = speeds.filter((id) => perSpeed.get(id)!.has(shoe.id));
+      if (!own.length) return null;
+      const score = own.reduce((acc, id) => acc + perSpeed.get(id)!.get(shoe.id)!, 0) / own.length;
+      return { ...averages(shoe, own), score: Math.round(score * 100), speeds: own };
+    })
+    .filter((x): x is ShoeScoreDetail => x !== null)
+    .sort((x, y) => y.score - x.score || (x.tc ?? 0) - (y.tc ?? 0));
 }

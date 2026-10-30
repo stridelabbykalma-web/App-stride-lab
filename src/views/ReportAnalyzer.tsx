@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnalysisSchema, analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput } from '../lib/analyze';
 import { findExercise, findProblem } from '../data/problems';
+import { loadReport, reportToText, type G2Report } from '../lib/mmruns';
 import { Card, CopyButton } from '../ui';
 
 type Img = ImageInput & { preview: string; id: number };
@@ -28,15 +29,34 @@ interface Props {
   initial?: Analysis;
   onResult?: (a: Analysis) => void;
   onUseFindings?: (a: Analysis) => void;
+  /** Se llama al cargar un informe por enlace (para rellenar la Fase 1 y guardar el enlace). */
+  onReportLoaded?: (r: G2Report, link: string) => void;
 }
 
-export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings }: Props) {
+export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings, onReportLoaded }: Props) {
   const [key, setKey] = useState(getApiKey);
   const [editingKey, setEditingKey] = useState(!getApiKey());
   const [images, setImages] = useState<Img[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | undefined>(initial);
+  const [link, setLink] = useState('');
+  const [report, setReport] = useState<G2Report | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchReport = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const r = await loadReport(link);
+      setReport(r);
+      onReportLoaded?.(r, link.trim());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se ha podido cargar el informe.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addFiles = async (files: Iterable<Blob>) => {
     const list = [...files].filter((f) => f.type.startsWith('image/'));
@@ -61,7 +81,7 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings 
     setBusy(true);
     setError('');
     try {
-      const a = await analyzeReport(key, images, context);
+      const a = await analyzeReport(key, images, context, report ? reportToText(report) : '');
       setResult(a);
       onResult?.(a);
     } catch (e) {
@@ -86,8 +106,44 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings 
 
   return (
     <div className="stack">
+      <Card title="Enlace del informe (el mismo que se comparte con el cliente)">
+        <div className="row wrap">
+          <input
+            className="grow"
+            value={link}
+            placeholder="https://shared.mmruns.com/areport2/index.php?r=…"
+            onChange={(e) => setLink(e.target.value)}
+          />
+          <button className="btn" disabled={!link.trim() || loading} onClick={fetchReport}>
+            {loading ? 'Cargando…' : 'Cargar informe'}
+          </button>
+        </div>
+        {report && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Zapatilla</th><th className="num">km/h</th><th className="num">Cadencia</th><th className="num">TC ms</th>
+                  <th className="num">Balance izq.</th><th className="num">Osc. cm</th><th className="num">ER / SA / SC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.runs.map((r) => (
+                  <tr key={r.n}>
+                    <td>{r.n}</td><td>{r.shoe}</td><td className="num">{r.speedKmh}</td><td className="num">{r.cadence}</td>
+                    <td className="num">{r.contactMs}</td><td className="num">{r.balanceL}%</td><td className="num">{r.verticalDispCm}</td>
+                    <td className="num">{r.energyReturn} / {r.shockAbsorption} / {r.strideConsistency}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {report && <p className="hint small">Informe de {report.name || 'cliente'} · {report.date}. ER/SA/SC: energy return, shock absorption y stride consistency (0–10).</p>}
+      </Card>
+
       <Card
-        title="Capturas del informe MotionMetrix G2"
+        title="Capturas del informe (opcional si has cargado el enlace)"
         aside={
           !editingKey && (
             <button className="btn small ghost" onClick={() => setEditingKey(true)}>
@@ -159,7 +215,7 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings 
         )}
 
         <div className="row wrap">
-          <button className="btn primary" disabled={!images.length || !key || busy} onClick={run}>
+          <button className="btn primary" disabled={(!images.length && !report) || !key || busy} onClick={run}>
             {busy ? 'Leyendo informe…' : result ? 'Volver a analizar' : 'Analizar y preparar qué decirle'}
           </button>
           <label className="btn ghost">
