@@ -1,0 +1,287 @@
+// Protocolo de tests principales G2 / MotionMetrix — Kalma Centre Terapèutic.
+// Fuente: Protocolo_tests_principales_G2_Kalma.docx
+
+export type TestBlock = 'sin-camilla' | 'con-camilla';
+
+export interface ClinicalTest {
+  id: string;
+  block: TestBlock;
+  name: string;
+  type: string;
+  goal: string;
+  how: string;
+  observe: string;
+  g2: string;
+  /** Incluido en la versión mínima de 10 minutos. */
+  minimal: boolean;
+}
+
+export const TESTS: ClinicalTest[] = [
+  {
+    id: 'zapatillas',
+    block: 'sin-camilla',
+    name: 'Análisis de zapatillas',
+    type: 'Previo a la exploración',
+    goal: 'Detectar patrones de carga repetidos a través del desgaste de la zapatilla.',
+    how: 'Pedir al paciente que traiga sus zapatillas habituales de correr. Observar la suela, mediasuela, upper y deformaciones de ambas zapatillas.',
+    observe: 'Desgaste medial o lateral, desgaste desigual entre derecha e izquierda, desgaste de puntera, agujero en upper del primer dedo, mediasuela hundida o zapatilla torsionada.',
+    g2: 'Orienta sobre pronación, supinación, despegue asimétrico, insuficiencia del primer radio, posible sobrecarga del tibial posterior y diferencia de carga entre extremidades.',
+    minimal: true,
+  },
+  {
+    id: 'estatica',
+    block: 'sin-camilla',
+    name: 'Observación postural estática',
+    type: 'Bipedestación',
+    goal: 'Valorar la alineación global antes del movimiento.',
+    how: 'Colocar al paciente descalzo de pie y observar desde anterior, posterior y lateral.',
+    observe: 'Altura de pelvis, rotación de tronco, valgo/varo de rodilla, recurvatum, retropié valgo/varo, pie plano/cavo, arco plantar y apoyo dominante.',
+    g2: 'Permite interpretar si algunas asimetrías que aparecen en carrera ya están presentes en estática: caída pélvica, carga unilateral, exceso de pronación, valgo dinámico o compensaciones del tronco.',
+    minimal: true,
+  },
+  {
+    id: 'jack',
+    block: 'sin-camilla',
+    name: 'Test de Jack',
+    type: 'Pie en carga',
+    goal: 'Valorar el mecanismo de Windlass y la respuesta del arco medial.',
+    how: 'Con el paciente de pie, elevar pasivamente el hallux y observar si el arco interno asciende y el pie supina.',
+    observe: 'Si el hallux se mueve libre, si el arco se eleva, si hay dolor, rigidez, hallux limitus funcional o ausencia de activación del arco.',
+    g2: 'Si falla, puede relacionarse con mala propulsión, aumento del tiempo de contacto, fascitis plantar, sobrecarga del primer radio o pérdida de eficiencia en el despegue.',
+    minimal: true,
+  },
+  {
+    id: 'pronacion',
+    block: 'sin-camilla',
+    name: 'Máxima pronación y resistencia a la supinación',
+    type: 'Pie en carga',
+    goal: 'Valorar el grado de pronación y la dificultad para llevar el pie hacia supinación.',
+    how: 'Con el paciente de pie, observar el máximo descenso del arco y aplicar una maniobra suave para valorar cuánta resistencia ofrece el pie al llevarlo hacia supinación.',
+    observe: 'Pie muy flexible, pie rígido, colapso del arco, resistencia alta a la supinación o necesidad de mucha fuerza para corregir.',
+    g2: 'Una resistencia alta o un pie muy pronado puede relacionarse con mayor demanda del tibial posterior, pronación mantenida, apoyo inestable y posible indicación de soporte plantar.',
+    minimal: false,
+  },
+  {
+    id: 'prca',
+    block: 'sin-camilla',
+    name: 'PRCA / PNCA',
+    type: 'Retropié',
+    goal: 'Valorar la posición relajada y neutra del calcáneo.',
+    how: 'Observar el calcáneo en posición relajada en carga y compararlo con la posición neutra del retropié.',
+    observe: 'Retropié valgo, retropié varo, compensación del antepié, relación calcáneo-tibia y simetría entre lados.',
+    g2: 'Ayuda a interpretar apoyo medial/lateral, pronación/supinación, compensaciones del retropié y comportamiento del pie durante la carrera.',
+    minimal: false,
+  },
+  {
+    id: 'knee-to-wall',
+    block: 'sin-camilla',
+    name: 'Knee to Wall Test',
+    type: 'Tobillo en carga',
+    goal: 'Medir la dorsiflexión funcional de tobillo.',
+    how: 'Colocar el pie frente a una pared. El paciente intenta tocar la pared con la rodilla sin levantar el talón ni colapsar el arco. Comparar ambos lados.',
+    observe: 'Distancia a la pared, talón que se levanta, dolor anterior de tobillo, colapso del arco, diferencia derecha/izquierda.',
+    g2: 'Una dorsiflexión limitada puede aumentar rigidez, impacto, tiempo de contacto, elevación precoz del talón y compensación por pronación.',
+    minimal: true,
+  },
+  {
+    id: 'heel-rise',
+    block: 'sin-camilla',
+    name: 'Heel Rise Test monopodal',
+    type: 'Fuerza funcional',
+    goal: 'Valorar tríceps sural, tibial posterior y capacidad propulsiva.',
+    how: 'Pedir al paciente que haga elevaciones de talón a una pierna. Contar repeticiones útiles y observar calidad del movimiento.',
+    observe: 'Altura del talón, dolor, fatiga, si el calcáneo invierte, si el arco se hunde, compensaciones de rodilla o tronco y diferencia bilateral.',
+    g2: 'Si falla, puede explicar falta de impulso, aumento del tiempo de contacto, sobrecarga aquílea, disfunción del tibial posterior y fatiga precoz.',
+    minimal: true,
+  },
+  {
+    id: 'flamingo',
+    block: 'sin-camilla',
+    name: 'Flamingo Test',
+    type: 'Equilibrio monopodal',
+    goal: 'Valorar propiocepción, foot core y control pélvico en apoyo unilateral.',
+    how: 'Paciente de pie sobre una pierna. Mantener equilibrio 20-30 segundos. Puede hacerse con ojos abiertos y, si procede, ojos cerrados.',
+    observe: 'Oscilación del pie, garra de dedos, caída de pelvis, valgo de rodilla, compensación de tronco y diferencia entre lados.',
+    g2: 'Relaciona la estabilidad monopodal con el apoyo en carrera. Si falla, puede haber déficit de foot core, glúteo medio o control propioceptivo.',
+    minimal: false,
+  },
+  {
+    id: 'sentadilla',
+    block: 'sin-camilla',
+    name: 'Sentadilla monopodal',
+    type: 'Control funcional',
+    goal: 'Valorar control integrado de cadera, rodilla y pie.',
+    how: 'Paciente realiza una pequeña sentadilla a una pierna, lenta y controlada. No hace falta buscar profundidad máxima.',
+    observe: 'Valgo de rodilla, caída pélvica, rotación interna femoral, pronación del pie, pérdida de equilibrio, dolor y asimetrías.',
+    g2: 'Es uno de los tests que mejor anticipa valgo dinámico, caída de pelvis, cruce de pies y mala absorción de carga en carrera.',
+    minimal: true,
+  },
+  {
+    id: 'step-down',
+    block: 'sin-camilla',
+    name: 'Step Down Test',
+    type: 'Control excéntrico',
+    goal: 'Valorar frenado, control excéntrico y absorción de impacto.',
+    how: 'Paciente baja lentamente de un escalón o cajón bajo tocando el suelo con el talón contrario y vuelve a subir.',
+    observe: 'Valgo de rodilla, caída de pelvis, pronación del pie, dolor anterior de rodilla, inestabilidad o compensación del tronco.',
+    g2: 'Muy útil para relacionar dolor femoropatelar, déficit de glúteo medio, mala absorción de impacto y control deficiente en la fase de apoyo.',
+    minimal: true,
+  },
+  {
+    id: 'rom-cadera',
+    block: 'con-camilla',
+    name: 'ROM articular de cadera',
+    type: 'Movilidad articular',
+    goal: 'Valorar si la cadera tiene movilidad suficiente para la zancada y la rotación pélvica.',
+    how: 'En decúbito supino, prono o sedestación, valorar flexión, extensión, abducción, aducción, rotación interna y rotación externa.',
+    observe: 'Limitación, dolor, bloqueo, diferencia derecha/izquierda, compensación lumbar o pélvica. Priorizar rotación interna, rotación externa y extensión.',
+    g2: 'Una cadera limitada puede provocar zancada corta, rotación pélvica alterada, valgo dinámico, cruce de pies o compensaciones lumbares.',
+    minimal: true,
+  },
+  {
+    id: 'thomas',
+    block: 'con-camilla',
+    name: 'Test de Thomas',
+    type: 'Acortamiento anterior de cadera',
+    goal: 'Valorar psoas-ilíaco, recto anterior y tensor de la fascia lata.',
+    how: 'Paciente en el borde de la camilla. Lleva una rodilla al pecho y deja caer la otra pierna relajada. Observar la posición del muslo y la rodilla.',
+    observe: 'Muslo que no baja, rodilla que se extiende, abducción de la pierna, aumento de lordosis lumbar o asimetría entre lados.',
+    g2: 'Si es positivo, puede explicar menor extensión de cadera, zancada posterior corta, anteversión pélvica y sobrecarga lumbar.',
+    minimal: true,
+  },
+  {
+    id: 'ober',
+    block: 'con-camilla',
+    name: 'Test de Ober',
+    type: 'Cintilla iliotibial-TFL',
+    goal: 'Valorar tensión del tensor de la fascia lata y cintilla iliotibial.',
+    how: 'Paciente en decúbito lateral. Se lleva la pierna superior hacia extensión y abducción, y se deja caer suavemente hacia aducción.',
+    observe: 'Si la pierna no cae, sensación de tensión lateral, dolor lateral de cadera o muslo, diferencia bilateral.',
+    g2: 'Una cintilla/TFL tensa puede relacionarse con dolor lateral de rodilla, valgo dinámico, exceso de aducción femoral y sobrecarga lateral.',
+    minimal: false,
+  },
+  {
+    id: 'fadir',
+    block: 'con-camilla',
+    name: 'Test FADIR',
+    type: 'Pinzamiento de cadera',
+    goal: 'Valorar posible impingement femoroacetabular CAM/Pincer.',
+    how: 'Con el paciente en supino, llevar la cadera a flexión, aducción y rotación interna de forma controlada.',
+    observe: 'Dolor inguinal, pinzamiento anterior, bloqueo, dolor profundo de cadera o comparación con el lado contrario.',
+    g2: 'Si es positivo, puede limitar la zancada, alterar la rotación de cadera y provocar compensaciones en pelvis, rodilla o pie.',
+    minimal: false,
+  },
+  {
+    id: 'ryder',
+    block: 'con-camilla',
+    name: 'Test de Ryder',
+    type: 'Torsión femoral',
+    goal: 'Valorar anteversión o retroversión femoral.',
+    how: 'Paciente en prono con rodilla flexionada a 90 grados. Rotar la cadera hasta palpar la máxima prominencia trocantérea y estimar la torsión femoral.',
+    observe: 'Exceso de anteversión, retroversión, diferencias entre lados y relación con pies hacia dentro o hacia fuera.',
+    g2: 'Ayuda a saber si el valgo, la rotación femoral o la orientación del pie tienen un componente estructural.',
+    minimal: false,
+  },
+  {
+    id: 'gluteo-medio',
+    block: 'con-camilla',
+    name: 'Test de glúteo medio',
+    type: 'Fuerza muscular',
+    goal: 'Valorar la fuerza estabilizadora lateral de la pelvis.',
+    how: 'Paciente en decúbito lateral. Pedir abducción de cadera y aplicar resistencia manual, evitando compensaciones con TFL o tronco.',
+    observe: 'Debilidad, dolor trocantéreo, compensación en flexión de cadera, fatiga, temblor o asimetría.',
+    g2: 'Déficit de glúteo medio se relaciona con caída pélvica, valgo dinámico, cruce de pies, dolor trocantéreo y peor control en apoyo monopodal.',
+    minimal: true,
+  },
+  {
+    id: 'gluteo-mayor',
+    block: 'con-camilla',
+    name: 'Test de glúteo mayor',
+    type: 'Fuerza muscular',
+    goal: 'Valorar la capacidad de extensión de cadera y propulsión posterior.',
+    how: 'Paciente en prono. Pedir extensión de cadera contra resistencia manual, controlando que no compense con lumbar o isquios.',
+    observe: 'Debilidad, dolor lumbar, dominancia de isquios, calambre, falta de extensión real o diferencia entre lados.',
+    g2: 'Un glúteo mayor débil puede generar menor impulso, aumento del tiempo de contacto, sobrecarga lumbar/isquios y menor eficiencia de carrera.',
+    minimal: false,
+  },
+  {
+    id: 'long-sitting',
+    block: 'con-camilla',
+    name: 'Long Sitting Test',
+    type: 'Sacroilíaca / longitud funcional',
+    goal: 'Orientar sobre posible diferencia funcional de longitud o disfunción iliosacra.',
+    how: 'Paciente en supino. Observar maléolos. Después pasa a sedestación larga y se compara si cambia la aparente longitud de las piernas.',
+    observe: 'Cambio de longitud aparente, asimetría, relación con posición del ilíaco y síntomas del paciente.',
+    g2: 'Puede ayudar a explicar asimetría de apoyo, diferencia de carga, zancada desigual o sospecha de componente pélvico.',
+    minimal: false,
+  },
+  {
+    id: 'slump',
+    block: 'con-camilla',
+    name: 'Slump Test o Lasègue (si procede)',
+    type: 'Neural',
+    goal: 'Valorar mecanosensibilidad neural cuando hay síntomas irradiados.',
+    how: 'Usar Lasègue en supino elevando pierna recta. Usar Slump en sedestación combinando flexión cervical, dorsal y extensión de rodilla de forma progresiva.',
+    observe: 'Dolor irradiado, hormigueo, tensión posterior, reproducción de síntomas, diferencia bilateral y cambios al modificar cuello o tobillo.',
+    g2: 'Si hay componente neural, puede condicionar la carrera, limitar la fase de oscilación y provocar patrones protectores o asimetrías.',
+    minimal: false,
+  },
+  {
+    id: 'palpacion',
+    block: 'con-camilla',
+    name: 'Palpación específica según dolor',
+    type: 'Exploración dirigida',
+    goal: 'Localizar tejidos sintomáticos y relacionarlos con el patrón de carrera.',
+    how: 'Palpar solo las zonas relevantes según anamnesis: cadera, rodilla, pie/tobillo, cadena posterior o zona lumbar.',
+    observe: 'Dolor localizado, irradiación, engrosamiento tendinoso, puntos gatillo, inflamación, sensibilidad articular o diferencias entre lados.',
+    g2: 'Permite unir el dato del G2 con el tejido que realmente duele: Aquiles, tibial posterior, fascia plantar, cintilla, tendón rotuliano, piramidal, glúteo medio, etc.',
+    minimal: false,
+  },
+];
+
+/** Tests añadidos según el síntoma principal. */
+export const SYMPTOM_ADDONS: { symptom: string; add: string }[] = [
+  {
+    symptom: 'Dolor de pie o tobillo',
+    add: 'Palpación plantar/medial/lateral, tibial posterior, peroneos, Aquiles, TPA, ASA, primer radio, Jack, Heel Rise y Knee to Wall.',
+  },
+  {
+    symptom: 'Dolor de rodilla',
+    add: 'Palpación anterior/medial/lateral/posterior, movilidad patelar, Apley si sospecha meniscal, cajón si sospecha ligamentosa, Step Down y sentadilla monopodal.',
+  },
+  {
+    symptom: 'Dolor de cadera o glúteo',
+    add: 'ROM de cadera, FADIR, Thomas, Ober, palpación trocantérea, piramidal, psoas, aductores, glúteo medio y glúteo mayor.',
+  },
+  {
+    symptom: 'Dolor lumbar o irradiado',
+    add: 'Slump, Lasègue, Long Sitting, Gillet/cigüeña, observación pélvica y control de core.',
+  },
+  {
+    symptom: 'Asimetría clara en G2',
+    add: 'Zapatillas, Long Sitting, Gillet, PRCA/PNCA, Heel Rise, glúteo medio, sentadilla monopodal y Step Down.',
+  },
+];
+
+/** Relación rápida hallazgo clínico → posible reflejo en el G2. */
+export const FINDING_TO_G2: { finding: string; g2: string }[] = [
+  { finding: 'Dorsiflexión limitada', g2: 'Más rigidez, más impacto, más tiempo de contacto o compensación en pronación.' },
+  { finding: 'Heel Rise débil', g2: 'Menor propulsión, mayor fatiga, posible aumento del tiempo de contacto.' },
+  { finding: 'Jack alterado / hallux limitado', g2: 'Peor despegue, menor eficiencia, compensación del apoyo anterior.' },
+  { finding: 'Glúteo medio débil', g2: 'Caída pélvica, valgo dinámico, cruce de pies, asimetría.' },
+  { finding: 'Glúteo mayor débil', g2: 'Menor impulso, dominancia lumbar/isquios, menor potencia.' },
+  { finding: 'Thomas positivo', g2: 'Zancada posterior corta, anteversión pélvica, compensación lumbar.' },
+  { finding: 'Ober positivo', g2: 'Dolor lateral de rodilla/cadera, exceso de tensión lateral.' },
+  { finding: 'FADIR positivo', g2: 'Limitación de cadera, dolor inguinal, zancada limitada.' },
+  { finding: 'Long Sitting / Gillet alterado', g2: 'Asimetría pélvica, diferencia de carga o zancada desigual.' },
+  { finding: 'Sentadilla monopodal alterada', g2: 'Valgo dinámico, mala absorción y control deficiente de extremidad inferior.' },
+];
+
+export const CONSULT_ORDER = [
+  'Anamnesis breve: dolor, lesión previa, kilómetros semanales, ritmos, zapatillas, plantillas y objetivo deportivo.',
+  'Análisis visual de zapatillas.',
+  'Exploración sin camilla: estática, pie/tobillo y tests funcionales.',
+  'Exploración con camilla: movilidad, fuerza, acortamientos y palpación específica.',
+  'Carrera en G2: caminar, carrera suave, ritmo habitual y, si procede, comparativa de zapatillas.',
+  'Interpretación conjunta: no explicar solo el dato del G2, sino relacionarlo con el hallazgo clínico.',
+];
