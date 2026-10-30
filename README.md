@@ -104,7 +104,7 @@ nombre en español o inglés (`Velocidad/Speed`, `TC/Contact time`, `Cadencia/Ca
 
 **Zapatilla ganadora.** Siguiendo el criterio del timing («TC más bajo, mejor simetría y oscilación vertical
 más estable») la app puntúa cada zapatilla de 0 a 100: TC 50 %, simetría 30 %, oscilación 20 %, normalizado
-entre las zapatillas y comparando solo las velocidades medidas en todas. Es una sugerencia; la elección final
+entre las zapatillas y comparando cada zapatilla solo con las que se probaron a su misma velocidad. Es una sugerencia; la elección final
 se marca a mano.
 
 > Si en vuestros informes la simetría aparece de otra forma (p. ej. índice 0–100 % o diferencia I/D),

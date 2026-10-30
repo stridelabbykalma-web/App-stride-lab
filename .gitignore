@@ -6,3 +6,6 @@ dist
 
 # Informes de clientes capturados de mmruns.com (confidencial)
 informes/
+
+# Capturas sueltas (pueden contener datos de clientes)
+*.png
