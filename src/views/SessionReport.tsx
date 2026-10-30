@@ -72,6 +72,22 @@ export function SessionReport({ session, client }: { session: Session; client: C
         </div>
       ))}
 
+      {session.analisis && (
+        <>
+          <h2>Qué decirle al cliente</h2>
+          <p>{session.analisis.guion.apertura}</p>
+          {session.analisis.guion.zapatilla && <p>{session.analisis.guion.zapatilla}</p>}
+          <ol>
+            {session.analisis.guion.puntos.map((p, i) => (
+              <li key={i}>
+                <b>{p.titulo}</b> ({p.dato}): {p.que_le_dices} {p.cue && <i>Cue: "{p.cue}"</i>}
+              </li>
+            ))}
+          </ol>
+          <p>{session.analisis.guion.cierre}</p>
+        </>
+      )}
+
       <h2>Cierre</h2>
       <p>
         <b>Zapatilla recomendada:</b> {winner?.modelo || '—'} · <b>TC medio final:</b> {session.cierre.tcMedioFinal || '—'} ms ·{' '}

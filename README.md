@@ -18,9 +18,31 @@ quedan en una sola herramienta que se usa en la tablet o el portátil durante la
 | 10–15′ | **Observación libre** — marcar los 2–3 problemas que se ven (de los 15 de la guía) | `Timing_Sesion_G2.pdf` / `Guia_Sesion_G2_StrideLab.pdf` |
 | 15–45′ | **Fase 1 · Zapatillas** — hasta 4 zapatillas × V1/V2/V3 con TC, cadencia, simetría y oscilación del G2. Ranking automático y elección de la ganadora | `Hoja_Apuntes_Sesion_G2.pdf` (pág. 1) |
 | 45–70′ | **Fase 2 · Técnica** — por problema: qué se observa, TC/cadencia antes-después, ejercicio (E01–E03) con su cue y su porqué | `Hoja_Apuntes_Sesion_G2.pdf` (pág. 2) + `Guia_Sesion_G2_StrideLab.pdf` |
+| 70–85′ | **Informe G2 · Qué decirle** — subes capturas del informe de mmruns.com y la app te prepara el guion para el cliente (ver abajo) | Informe MotionMetrix G2 |
 | 70–85′ | **Cierre e informe** — 3 puntos clave, recomendaciones, mensaje post-sesión con botón de WhatsApp e impresión/PDF de la hoja de sesión | `Mensaje_PostSesion_G2.pdf` |
 
 Cada fase muestra los puntos del timing y un cronómetro con el tiempo objetivo (se pone en rojo al pasarse).
+
+## Qué decirle al cliente a partir de capturas del informe
+
+En la sesión (paso **Informe G2 · Qué decirle**) o en la pestaña **Leer informe G2**:
+
+1. Sube las capturas del informe de mmruns.com: elígelas, arrástralas o pégalas con Ctrl/Cmd+V (hasta 10).
+2. Pulsa **Analizar**. Claude lee las capturas junto con lo registrado en la sesión: ficha, tests alterados,
+   problemas observados, zapatilla elegida y correcciones.
+3. Recibes:
+   - **Qué decirle**: una frase de apertura, lo de la zapatilla, **máximo 3 puntos** (cada uno con el dato del
+     informe, qué significa en lenguaje sencillo, la frase literal para decirle, y el ejercicio y el cue de la guía)
+     y la frase de cierre «Lo más importante que te llevas hoy es…».
+   - **Lo que se ha leído**: tabla de métricas con su valoración, para comprobarla con el informe.
+   - **Avisos**: datos ilegibles o señales para derivar a fisioterapia.
+4. **Usar los 3 puntos en el mensaje post-sesión** rellena los puntos clave del WhatsApp final. El guion también
+   sale en la hoja de sesión que se imprime.
+
+Requisitos: una **clave de API de Anthropic** (console.anthropic.com → API Keys). Se introduce una vez y se
+guarda solo en ese dispositivo. Cada análisis cuesta unos céntimos. Las capturas se envían a la API de Anthropic
+para leerlas: no subas capturas con datos que el cliente no haya autorizado. El prompt y la lógica están en
+`src/lib/analyze.ts`.
 
 ## Datos del G2 (MotionMetrix)
 
@@ -62,7 +84,7 @@ npm test         # tests (ranking de zapatillas, mensaje post-sesión, importaci
 npm run build    # genera dist/ (estático, se puede publicar en GitHub Pages)
 ```
 
-Stack: React 18 + TypeScript + Vite, sin backend.
+Stack: React 18 + TypeScript + Vite, sin backend. La lectura de capturas usa la API de Claude (`@anthropic-ai/sdk`) desde el navegador.
 
 ```
 src/
@@ -72,5 +94,6 @@ src/
   lib/winner.ts      ranking de zapatillas con datos del G2
   lib/csv.ts         importación de tablas del G2
   lib/postMessage.ts mensaje post-sesión y enlace de WhatsApp
+  lib/analyze.ts     lectura de capturas del G2 con Claude → guion para el cliente
   views/             pantallas (ficha, sesión, hoja imprimible, referencia)
 ```

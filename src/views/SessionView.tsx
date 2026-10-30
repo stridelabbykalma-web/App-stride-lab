@@ -8,6 +8,7 @@ import { rankShoes, num } from '../lib/winner';
 import { buildPostMessage, missingFields, whatsappLink } from '../lib/postMessage';
 import { parseG2Table } from '../lib/csv';
 import { Card, Choice, CopyButton, Text, Timer } from '../ui';
+import { ReportAnalyzer } from './ReportAnalyzer';
 
 const STEPS = [
   { id: 'prep', label: 'Preparación' },
@@ -15,6 +16,7 @@ const STEPS = [
   { id: 'obs', label: 'Observación libre' },
   { id: 'fase1', label: 'Fase 1 · Zapatillas' },
   { id: 'fase2', label: 'Fase 2 · Técnica' },
+  { id: 'informe', label: 'Informe G2 · Qué decirle' },
   { id: 'cierre', label: 'Cierre e informe' },
 ] as const;
 type StepId = (typeof STEPS)[number]['id'];
@@ -47,6 +49,7 @@ export function SessionView({ session, client, onChange }: Props) {
       {step === 'obs' && <Observation session={session} onChange={onChange} />}
       {step === 'fase1' && <Phase1 session={session} onChange={onChange} />}
       {step === 'fase2' && <Phase2 session={session} onChange={onChange} />}
+      {step === 'informe' && <Report session={session} client={client} onChange={onChange} />}
       {step === 'cierre' && <Close session={session} client={client} onChange={onChange} />}
 
       <div className="row between no-print">
@@ -516,6 +519,58 @@ function Phase2({ session, onChange }: StepProps) {
         </button>
       </div>
       {session.corrections.length > 3 && <p className="warn">Máximo 2–3 problemas por sesión — no abrumar.</p>}
+    </div>
+  );
+}
+
+/** Resumen en texto de lo registrado en la sesión, para que el análisis del informe lo tenga en cuenta. */
+export function sessionContext(session: Session, client: Client): string {
+  const lines: string[] = [];
+  const ficha = [
+    client.edad && `${client.edad} años`,
+    client.kmSemana && `${client.kmSemana} km/semana`,
+    client.ritmo && `ritmo ${client.ritmo} min/km`,
+    client.objetivo && `objetivo: ${client.objetivo}`,
+    client.objetivoCarrera,
+  ].filter(Boolean);
+  if (ficha.length) lines.push(`Cliente: ${ficha.join(', ')}.`);
+  if (client.lesionesPasadas) lines.push(`Lesiones pasadas: ${client.lesionesPasadas}`);
+  if (client.molestiasActuales) lines.push(`Molestias actuales: ${client.molestiasActuales}`);
+  const altered = TESTS.filter((t) => session.tests[t.id]?.result === 'alterado').map((t) => {
+    const r = session.tests[t.id];
+    return `${t.name}${r.lado ? ` (${r.lado})` : ''}${r.notas ? `: ${r.notas}` : ''}`;
+  });
+  if (altered.length) lines.push(`Tests clínicos alterados: ${altered.join('; ')}`);
+  if (session.observados.length) lines.push(`Observado en cinta: ${session.observados.map((id) => findProblem(id)?.name).join(', ')}`);
+  if (session.observacionNotas) lines.push(`Notas de observación: ${session.observacionNotas}`);
+  const winner = session.shoes.find((s) => s.id === session.winnerShoeId);
+  if (winner?.modelo) lines.push(`Zapatilla elegida en fase 1: ${winner.modelo}`);
+  for (const c of session.corrections) {
+    const p = findProblem(c.problemId);
+    if (p) lines.push(`Trabajado en fase 2: ${p.name}${c.cue ? ` (cue "${c.cue}")` : ''}${c.resultado ? ` — ${c.resultado}` : ''}`);
+  }
+  return lines.join('\n');
+}
+
+function Report({ session, client, onChange }: StepProps & { client: Client }) {
+  return (
+    <div className="stack">
+      <p className="hint">
+        Sube capturas del informe de mmruns.com (resumen, comparativa de zapatillas, gráficas…). La app las lee y te prepara qué
+        decirle al cliente: máximo 3 puntos, con el dato, la explicación sencilla, la frase y el ejercicio de la guía.
+      </p>
+      <ReportAnalyzer
+        context={sessionContext(session, client)}
+        initial={session.analisis}
+        onResult={(a) => onChange({ ...session, analisis: a })}
+        onUseFindings={(a) =>
+          onChange({
+            ...session,
+            analisis: a,
+            cierre: { ...session.cierre, hallazgos: [0, 1, 2].map((i) => a.hallazgos_mensaje[i] ?? '') as Session['cierre']['hallazgos'] },
+          })
+        }
+      />
     </div>
   );
 }

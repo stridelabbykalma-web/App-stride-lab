@@ -1,4 +1,5 @@
 import type { SpeedId } from './data/protocol';
+import type { Analysis } from './lib/analyze';
 
 /** Ficha de cliente — Análisis biomecánico. Todos los campos son texto libre o enumerados. */
 export interface Client {
@@ -101,6 +102,8 @@ export interface Session {
   winnerShoeId: string;
   fase1Notas: string;
   corrections: Correction[];
+  /** Lectura del informe G2 a partir de capturas y guion para el cliente. */
+  analisis?: Analysis;
   cierre: {
     tcMedioFinal: string;
     cadenciaObjetivo: string;

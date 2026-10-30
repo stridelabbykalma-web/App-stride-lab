@@ -5,6 +5,7 @@ import { SessionView } from './views/SessionView';
 import { SessionReport } from './views/SessionReport';
 import { GuideView, ProtocolView, WhatsAppView } from './views/Reference';
 import { Card } from './ui';
+import { ReportAnalyzer } from './views/ReportAnalyzer';
 
 type Route =
   | { view: 'clients' }
@@ -12,10 +13,12 @@ type Route =
   | { view: 'session'; id: string }
   | { view: 'guide' }
   | { view: 'protocol' }
-  | { view: 'whatsapp' };
+  | { view: 'whatsapp' }
+  | { view: 'analyze' };
 
 const TABS: [Route['view'], string][] = [
   ['clients', 'Clientes'],
+  ['analyze', 'Leer informe G2'],
   ['whatsapp', 'WhatsApp previo'],
   ['protocol', 'Tests clínicos'],
   ['guide', 'Guía 15 problemas'],
@@ -173,6 +176,15 @@ export default function App() {
         </>
       );
     }
+  } else if (route.view === 'analyze') {
+    content = (
+      <div className="stack">
+        <p className="hint">
+          Análisis rápido sin sesión. Para que tenga en cuenta la ficha y los tests, hazlo desde la sesión del cliente (paso «Informe G2 · Qué decirle»).
+        </p>
+        <ReportAnalyzer />
+      </div>
+    );
   } else if (route.view === 'guide') {
     content = <GuideView />;
   } else if (route.view === 'protocol') {
