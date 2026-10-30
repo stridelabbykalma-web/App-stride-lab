@@ -44,6 +44,29 @@ guarda solo en ese dispositivo. Cada análisis cuesta unos céntimos. Las captur
 para leerlas: no subas capturas con datos que el cliente no haya autorizado. El prompt y la lógica están en
 `src/lib/analyze.ts`.
 
+## Leer el informe directamente de mmruns.com (agent-browser)
+
+Para no tener que hacer capturas: Claude Code, en tu ordenador, abre el informe en mmruns.com con
+[agent-browser](https://github.com/vercel-labs/agent-browser) usando la sesión del centro, lo lee y deja el guion
+en un `analisis.json` que se importa en la app con **Importar análisis (.json)**. No hace falta clave de API.
+
+Instalación (una vez por ordenador, con el repositorio clonado):
+
+```bash
+npm i -g agent-browser && agent-browser install
+mkdir -p .claude/skills/informe-g2 && cp docs/skill-informe-g2/SKILL.md .claude/skills/informe-g2/
+scripts/capturar-informe.sh login   # se abre el navegador: inicia sesión en mmruns.com a mano
+```
+
+Uso: en Claude Code, «lee el informe de Laura Pérez» o pega el enlace de mmruns.com. La skill:
+
+1. Busca el informe en mmruns.com (o abre el enlace) con la sesión guardada en `~/.stridelab/mmruns-profile`.
+2. Lo captura con `scripts/capturar-informe.sh`: texto, captura completa y PDF en `informes/…` (fuera de git).
+3. Prepara el guion con las mismas reglas que la app y lo guarda en `informes/…/analisis.json`.
+
+La contraseña de mmruns nunca pasa por Claude: el inicio de sesión lo haces tú en la ventana que se abre.
+Si la sesión caduca, el script avisa y basta con repetir `login`.
+
 ## Datos del G2 (MotionMetrix)
 
 Por cada pasada se guardan:

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput } from '../lib/analyze';
+import { AnalysisSchema, analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput } from '../lib/analyze';
 import { findExercise, findProblem } from '../data/problems';
 import { Card, CopyButton } from '../ui';
 
@@ -68,6 +68,19 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings 
       setError(describeError(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // analisis.json generado por la skill informe-g2 (agent-browser sobre mmruns.com)
+  const importJSON = async (file: File) => {
+    setError('');
+    try {
+      const parsed = AnalysisSchema.safeParse(JSON.parse(await file.text()));
+      if (!parsed.success) throw new Error();
+      setResult(parsed.data);
+      onResult?.(parsed.data);
+    } catch {
+      setError('El archivo no es un análisis válido (analisis.json de la skill informe-g2).');
     }
   };
 
@@ -149,6 +162,10 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings 
           <button className="btn primary" disabled={!images.length || !key || busy} onClick={run}>
             {busy ? 'Leyendo informe…' : result ? 'Volver a analizar' : 'Analizar y preparar qué decirle'}
           </button>
+          <label className="btn ghost">
+            Importar análisis (.json)
+            <input type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
+          </label>
           {busy && <span className="hint">Suele tardar entre 20 y 60 segundos.</span>}
           {!key && <span className="hint">Añade la clave de API para analizar.</span>}
         </div>

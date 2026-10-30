@@ -3,3 +3,6 @@ dist
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Informes de clientes capturados de mmruns.com (confidencial)
+informes/
