@@ -1,5 +1,5 @@
 // Función serverless (Vercel): GET /api/mmruns?r=CÓDIGO → JSON del informe de mmruns.com
-import { fetchMmrunsReport } from '../server/mmruns';
+import { fetchMmrunsReport } from '../server/mmruns.js';
 
 export async function GET(req: Request): Promise<Response> {
   const code = new URL(req.url).searchParams.get('r') ?? '';
