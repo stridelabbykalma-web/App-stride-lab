@@ -49,13 +49,15 @@ export function ShoeSpecView({ modelo, compact }: { modelo: string; compact?: bo
           {!compact && spec.rocker && <span className="chip static">rocker</span>}
         </div>
       ) : (
-        !busy && <span className="hint small">Sin ficha técnica</span>
+        !busy && <span className="hint small">Sin ficha técnica{getApiKey() ? '' : ' (llega con la respuesta de Claude, o rellénala a mano)'}</span>
       )}
       <div className="row">
-        <button className="btn small ghost" disabled={busy} onClick={search}>
-          {busy ? 'Buscando…' : spec ? 'Actualizar' : 'Buscar ficha'}
-        </button>
-        {!compact && (
+        {getApiKey() && (
+          <button className="btn small ghost" disabled={busy} onClick={search}>
+            {busy ? 'Buscando…' : spec ? 'Actualizar' : 'Buscar ficha'}
+          </button>
+        )}
+        {(!compact || !getApiKey()) && (
           <button className="btn small ghost" onClick={() => setEditing((e) => !e)}>
             {editing ? 'Cerrar' : spec ? 'Editar' : 'A mano'}
           </button>

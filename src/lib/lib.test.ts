@@ -115,3 +115,89 @@ describe('rankShoes con velocidades distintas por zapatilla', () => {
     expect(ranking.find((r) => r.shoeId === c.id)!.speeds).toEqual(['V1', 'V2', 'V3']);
   });
 });
+
+import { buildManualPrompt, parseManualResponse } from './analyze';
+
+describe('análisis sin API (copiar y pegar en claude.ai)', () => {
+  const answer = {
+    resumen: 'r',
+    metricas: [{ nombre: 'Cadencia', valor: '156 ppm', contexto: '9 km/h', valoracion: 'a_trabajar' }],
+    problemas: [{ problema: 'Cadencia baja', problema_id: '10', evidencia: '156 ppm' }],
+    perfil_zapatilla: { conclusion: 'c', caracteristicas: ['Drop 6-8 mm'], evidencia: 'e' },
+    guion: {
+      apertura: 'a',
+      zapatilla: '',
+      puntos: [
+        {
+          titulo: 'Cadencia',
+          dato: '156 ppm',
+          que_significa: 'x',
+          que_le_dices: 'y',
+          problema_id: '10',
+          ejercicio: { nombre: 'Metrónomo', como: '30"', cue: 'Más pasos', que_notara: 'ligereza', dato_a_vigilar: 'cadencia ↑' },
+        },
+      ],
+      cierre: 'z',
+    },
+    hallazgos_mensaje: ['1', '2', '3'],
+    avisos: [],
+    fichas: [
+      {
+        modelo: 'Salomon Aero Blaze 2', categoria: 'tempo', drop_mm: 8, stack_talon_mm: 38, stack_antepie_mm: 30, peso_g: 230,
+        amortiguacion: 'firme', reactividad: 'alta', placa: 'otra', estabilidad: 'neutra', rocker: true, espuma: 'Energy Foam', resumen: '', fuentes: [],
+      },
+    ],
+  };
+
+  it('lee la respuesta con texto alrededor y bloque ```json', () => {
+    const { analysis, fichas } = parseManualResponse('Aquí tienes:\n```json\n' + JSON.stringify(answer) + '\n```\nSuerte');
+    expect(analysis.guion.puntos[0].ejercicio.cue).toBe('Más pasos');
+    expect(fichas[0].drop_mm).toBe(8);
+    expect('fichas' in analysis).toBe(false);
+  });
+
+  it('da un error claro si falta el JSON o el formato no cuadra', () => {
+    expect(() => parseManualResponse('no hay nada')).toThrow(/JSON/);
+    expect(() => parseManualResponse(JSON.stringify({ resumen: 'x' }))).toThrow(/formato/);
+  });
+
+  it('el encargo incluye datos, contexto, zapatillas y esquema', () => {
+    const p = buildManualPrompt('Cliente: 35 años', 'Pasada 1 · Adios Pro 4', ['Adios Pro 4']);
+    expect(p).toContain('Pasada 1 · Adios Pro 4');
+    expect(p).toContain('Cliente: 35 años');
+    expect(p).toContain('(Adios Pro 4)');
+    expect(p).toContain('"perfil_zapatilla"');
+  });
+});
+
+import { applyIntake, buildIntakePrompt } from './intake';
+import { newClient } from '../storage';
+
+describe('ficha desde WhatsApp', () => {
+  const resp = {
+    nombre: 'Alex Martí', telefono: '', email: 'alex@mail.com', edad: '35', peso: '78', talla: '182', ocupacion: 'Oficina', jornada: 'sentado',
+    anosCorriendo: '4', kmSemana: '30-40', ritmo: '5:30', terreno: 'mixto', competicion: 'si', objetivoCarrera: 'Maratón de Barcelona',
+    zapEntreno: 'Nike Pegasus 41', zapEntrenoKm: '600', zapCompeticion: '', zapExtra: '', lesionesPasadas: 'Periostitis', molestiasActuales: '',
+    plantillas: 'no', estudioPrevio: 'no', estudioPrevioDonde: '', porQueAhora: '', expectativas: '', objetivo: '', fuerza: '', otrosDeportes: '',
+    horasSueno: '', patologia: '', origen: 'instagram', recomendadoPor: '',
+  };
+
+  it('rellena solo los campos vacíos', () => {
+    const c = { ...newClient(), nombre: 'Alex' };
+    const { client, filled } = applyIntake(c, '```json\n' + JSON.stringify(resp) + '\n```');
+    expect(client.nombre).toBe('Alex');
+    expect(client.zapEntreno).toBe('Nike Pegasus 41');
+    expect(client.jornada).toBe('sentado');
+    expect(filled).toBe(18);
+  });
+
+  it('rechaza valores fuera de los permitidos', () => {
+    expect(() => applyIntake(newClient(), JSON.stringify({ ...resp, terreno: 'pista' }))).toThrow(/terreno/);
+  });
+
+  it('el encargo incluye las preguntas y la conversación pegada', () => {
+    const p = buildIntakePrompt('Alex: corro 4 años');
+    expect(p).toContain('¿Cuántos años llevas corriendo?');
+    expect(p).toContain('Alex: corro 4 años');
+  });
+});

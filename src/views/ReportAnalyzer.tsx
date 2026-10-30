@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
-import { AnalysisSchema, analyzeReport, describeError, getApiKey, prepareImage, setApiKey, type Analysis, type ImageInput, type LiveExerciseT } from '../lib/analyze';
+import {
+  AnalysisSchema,
+  analyzeReport,
+  buildManualPrompt,
+  describeError,
+  getApiKey,
+  parseManualResponse,
+  prepareImage,
+  setApiKey,
+  type Analysis,
+  type ImageInput,
+  type LiveExerciseT,
+} from '../lib/analyze';
 import { findProblem } from '../data/problems';
-import { specsToText, useShoeSpecs } from '../lib/shoeSpecs';
+import { specKey, specsToText, useShoeSpecs } from '../lib/shoeSpecs';
 import { ShoeSpecView } from './ShoeSpecView';
 import { loadReport, reportToText, type G2Report } from '../lib/mmruns';
 import { Card, CopyButton } from '../ui';
@@ -42,7 +54,7 @@ interface Props {
 }
 
 export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings, onReportLoaded, shoeModels = [] }: Props) {
-  const { specs } = useShoeSpecs();
+  const { specs, saveSpec } = useShoeSpecs();
   const [key, setKey] = useState(getApiKey);
   const [editingKey, setEditingKey] = useState(!getApiKey());
   const [images, setImages] = useState<Img[]>([]);
@@ -52,6 +64,25 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
   const [link, setLink] = useState('');
   const [report, setReport] = useState<G2Report | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showApi, setShowApi] = useState(!!getApiKey());
+  const [pasted, setPasted] = useState('');
+
+  const models = [...new Set([...(report?.runs.map((r) => r.shoe) ?? []), ...shoeModels].filter((m) => m.trim()))];
+  const reportData = () => [report ? reportToText(report) : '', specsToText(models, specs)].filter(Boolean).join('\n\n');
+
+  // Sin API: la respuesta de claude.ai trae el análisis y las fichas de las zapatillas
+  const usePasted = () => {
+    setError('');
+    try {
+      const { analysis, fichas } = parseManualResponse(pasted);
+      fichas.forEach((f) => saveSpec(specKey(f.modelo), f));
+      setResult(analysis);
+      onResult?.(analysis);
+      setPasted('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se ha podido leer la respuesta.');
+    }
+  };
 
   const fetchReport = async () => {
     setLoading(true);
@@ -90,9 +121,7 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
     setBusy(true);
     setError('');
     try {
-      const models = [...new Set([...(report?.runs.map((r) => r.shoe) ?? []), ...shoeModels].filter((m) => m.trim()))];
-      const data = [report ? reportToText(report) : '', specsToText(models, specs)].filter(Boolean).join('\n\n');
-      const a = await analyzeReport(key, images, context, data);
+      const a = await analyzeReport(key, images, context, reportData());
       setResult(a);
       onResult?.(a);
     } catch (e) {
@@ -165,8 +194,47 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
         {report && <p className="hint small">Informe de {report.name || 'cliente'} · {report.date}. ER/SA/SC: energy return, shock absorption y stride consistency (0–10).</p>}
       </Card>
 
+      <Card title="Analizar con Claude (sin API)">
+        <ol className="bullets">
+          <li>
+            Pulsa <b>Copiar para Claude</b>: copia los datos del informe{context ? ', el contexto de la sesión' : ''} y las instrucciones de Stride Lab.
+          </li>
+          <li>
+            Abre una conversación nueva en claude.ai, pega y envía. Activa la búsqueda web para que encuentre las fichas de las
+            zapatillas. Si no has cargado el enlace, adjunta ahí las capturas del informe.
+          </li>
+          <li>Copia la respuesta completa de Claude y pégala abajo.</li>
+        </ol>
+        <div className="row wrap">
+          <CopyButton text={buildManualPrompt(context, reportData(), models)} label="Copiar para Claude" />
+          <a className="btn small" href="https://claude.ai/new" target="_blank" rel="noreferrer">
+            Abrir claude.ai
+          </a>
+          {!report && <span className="hint small">Consejo: carga antes el enlace del informe para pasarle los datos exactos.</span>}
+        </div>
+        <label className="field">
+          <span className="field-label">Respuesta de Claude</span>
+          <textarea rows={4} value={pasted} placeholder="Pega aquí la respuesta (el bloque JSON)…" onChange={(e) => setPasted(e.target.value)} />
+        </label>
+        <div className="row wrap">
+          <button className="btn primary" disabled={!pasted.trim()} onClick={usePasted}>
+            Usar respuesta
+          </button>
+          <label className="btn ghost">
+            Importar análisis (.json)
+            <input type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
+          </label>
+        </div>
+        {error && !showApi && <p className="warn">{error}</p>}
+      </Card>
+
+      {!showApi ? (
+        <button className="btn small ghost" onClick={() => setShowApi(true)}>
+          Usar con clave de API (opcional, análisis automático)
+        </button>
+      ) : (
       <Card
-        title="Capturas del informe (opcional si has cargado el enlace)"
+        title="Con clave de API (opcional): análisis automático y capturas"
         aside={
           !editingKey && (
             <button className="btn small ghost" onClick={() => setEditingKey(true)}>
@@ -241,16 +309,13 @@ export function ReportAnalyzer({ context = '', initial, onResult, onUseFindings,
           <button className="btn primary" disabled={(!images.length && !report) || !key || busy} onClick={run}>
             {busy ? 'Leyendo informe…' : result ? 'Volver a analizar' : 'Analizar y preparar qué decirle'}
           </button>
-          <label className="btn ghost">
-            Importar análisis (.json)
-            <input type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
-          </label>
           {busy && <span className="hint">Suele tardar entre 20 y 60 segundos.</span>}
           {!key && <span className="hint">Añade la clave de API para analizar.</span>}
         </div>
         {context && <p className="hint small">Se incluye el contexto de la sesión: ficha, tests y datos anotados.</p>}
         {error && <p className="warn">{error}</p>}
       </Card>
+      )}
 
       {result && <AnalysisView a={result} onUseFindings={onUseFindings} />}
     </div>

@@ -1,14 +1,15 @@
 import type { Client } from '../types';
-import { Card, Choice, Text } from '../ui';
+import { useState } from 'react';
+import { applyIntake, buildIntakePrompt } from '../lib/intake';
+import { Card, Choice, CopyButton, Text } from '../ui';
 
 export function ClientForm({ client, onChange }: { client: Client; onChange: (c: Client) => void }) {
   const set = <K extends keyof Client>(k: K) => (v: Client[K]) => onChange({ ...client, [k]: v });
 
   return (
     <div className="stack">
-      <p className="hint">
-        Rellena con las respuestas de la secuencia de WhatsApp. Lo que falte, se pregunta en consulta.
-      </p>
+      <WhatsAppIntake client={client} onChange={onChange} />
+      <p className="hint">Lo que falte, se pregunta en consulta.</p>
       <Card title="1. Datos personales">
         <div className="grid">
           <Text label="Nombre completo" value={client.nombre} onChange={set('nombre')} />
@@ -108,5 +109,53 @@ export function ClientForm({ client, onChange }: { client: Client; onChange: (c:
         <Text label="¿Quién lo ha recomendado?" value={client.recomendadoPor} onChange={set('recomendadoPor')} />
       </Card>
     </div>
+  );
+}
+
+/** Rellenar la ficha desde las capturas o el texto de la conversación de WhatsApp, pasando por claude.ai. */
+function WhatsAppIntake({ client, onChange }: { client: Client; onChange: (c: Client) => void }) {
+  const [chat, setChat] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+
+  const apply = () => {
+    setError('');
+    try {
+      const { client: next, filled } = applyIntake(client, answer);
+      onChange(next);
+      setAnswer('');
+      setMsg(`Rellenados ${filled} campos. Los que ya tenían algo no se han tocado. Revísalos abajo.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se ha podido leer la respuesta.');
+    }
+  };
+
+  return (
+    <Card title="Rellenar desde WhatsApp">
+      <ol className="bullets">
+        <li>
+          Si tienes los mensajes como texto (copiados o «Exportar chat» sin archivos), pégalos aquí. Si son capturas, sáltate
+          este paso.
+        </li>
+        <li>
+          Pulsa <b>Copiar para Claude</b>, abre claude.ai y pégalo. Si son capturas, adjúntalas en ese mismo mensaje.
+        </li>
+        <li>Copia la respuesta de Claude y pégala abajo.</li>
+      </ol>
+      <Text area label="Mensajes de WhatsApp (opcional)" value={chat} onChange={setChat} placeholder="[12/06 10:15] Alex: Me llamo Alex…" />
+      <div className="row wrap">
+        <CopyButton text={buildIntakePrompt(chat)} label="Copiar para Claude" />
+        <a className="btn small" href="https://claude.ai/new" target="_blank" rel="noreferrer">
+          Abrir claude.ai
+        </a>
+      </div>
+      <Text area label="Respuesta de Claude" value={answer} onChange={setAnswer} placeholder="Pega aquí la respuesta (el bloque JSON)…" />
+      <button className="btn primary" disabled={!answer.trim()} onClick={apply}>
+        Rellenar ficha
+      </button>
+      {msg && <p className="hint">{msg}</p>}
+      {error && <p className="warn">{error}</p>}
+    </Card>
   );
 }

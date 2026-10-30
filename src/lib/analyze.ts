@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { PROBLEMS } from '../data/problems';
 import { FINDING_TO_G2 } from '../data/tests';
+import { ShoeSpecSchema, type ShoeSpec } from './shoeSpecs';
 
 // Lee capturas del informe MotionMetrix G2 con Claude y devuelve el guion de qué decirle al cliente.
 // La llamada sale directamente del navegador con la clave de API guardada en este dispositivo.
@@ -120,6 +121,58 @@ ${guideText}
 
 Relación hallazgo clínico → reflejo en el G2:
 ${findingsText}`;
+
+// ---- Sin API: se copia el encargo para pegarlo en claude.ai y se pega aquí la respuesta ----
+
+export const ManualResponseSchema = AnalysisSchema.extend({
+  fichas: z.array(ShoeSpecSchema).describe('Ficha técnica de cada zapatilla probada.'),
+});
+
+const jsonSchemaText = (() => {
+  const { $schema: _ignored, ...schema } = z.toJSONSchema(ManualResponseSchema);
+  return JSON.stringify(schema);
+})();
+
+/** Texto completo para pegar en claude.ai: instrucciones de Stride Lab, datos y formato de respuesta. */
+export function buildManualPrompt(sessionContext: string, reportData: string, models: string[]): string {
+  return [
+    SYSTEM,
+    `Fichas de zapatillas: busca en internet (RunRepeat, web de la marca, Running Warehouse, Believe in the Run, Doctors of Running) la ficha técnica de cada zapatilla probada${
+      models.length ? ` (${models.join('; ')})` : ''
+    }: drop, stack de talón y antepié, peso, amortiguación (firme <20 HA blanda, 20-28 media, >28 firme), reactividad, placa, estabilidad, rocker y espuma. Si no encuentras un dato, déjalo a null. En "modelo" escribe el nombre exactamente como aparece en los datos. Úsalas para "perfil_zapatilla".`,
+    reportData && `Datos del informe:\n${reportData}`,
+    sessionContext.trim() && `Contexto de la sesión:\n${sessionContext}`,
+    'Si te adjunto capturas del informe, léelas también.',
+    `Responde SOLO con un bloque de código JSON que cumpla este esquema (sin texto antes ni después):\n${jsonSchemaText}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** Saca el JSON de una respuesta pegada de claude.ai (bloque ```json o JSON suelto con texto alrededor). */
+export function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1];
+  const raw = fenced ?? text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error('No encuentro el JSON en la respuesta. Copia la respuesta completa de Claude.');
+  }
+}
+
+/** Lee la respuesta pegada de claude.ai (admite el bloque ```json o el JSON suelto). */
+export function parseManualResponse(text: string): { analysis: Analysis; fichas: ShoeSpec[] } {
+  const data = extractJson(text);
+  const full = ManualResponseSchema.safeParse(data);
+  if (full.success) {
+    const { fichas, ...analysis } = full.data;
+    return { analysis, fichas };
+  }
+  const onlyAnalysis = AnalysisSchema.safeParse(data);
+  if (onlyAnalysis.success) return { analysis: onlyAnalysis.data, fichas: [] };
+  const where = full.error.issues[0];
+  throw new Error(`La respuesta no tiene el formato esperado${where ? ` (${where.path.join('.')}: ${where.message})` : ''}. Pide a Claude que responda solo con el JSON.`);
+}
 
 export interface ImageInput {
   mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';

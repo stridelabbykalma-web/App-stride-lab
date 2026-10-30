@@ -23,6 +23,22 @@ quedan en una sola herramienta que se usa en la tablet o el portátil durante la
 
 Cada fase muestra los puntos del timing y un cronómetro con el tiempo objetivo (se pone en rojo al pasarse).
 
+## Sin clave de API: con tu cuenta de claude.ai
+
+La app no necesita API para la parte de Claude. Usa copiar y pegar con claude.ai, que va con tu suscripción:
+
+- **Ficha desde WhatsApp** (en la ficha del cliente): pega los mensajes o adjunta las capturas en claude.ai,
+  pulsa **Copiar para Claude**, pega la respuesta y **Rellenar ficha**. Solo se rellenan los campos vacíos.
+- **Análisis del informe** (paso Informe G2 · Análisis): carga el enlace del informe, pulsa **Copiar para
+  Claude**, pégalo en claude.ai con la búsqueda web activada y pega la respuesta. Salen el guion, los ejercicios
+  en directo, el tipo de zapatilla que le funciona y las fichas de las zapatillas, que quedan guardadas.
+
+Lo que se copia lleva todos los valores del informe (cada pasada con sus métricas izquierda/derecha), la ficha,
+los tests, lo observado, las zapatillas y las instrucciones de Stride Lab. Claude responde en un formato que la
+app comprueba antes de usarlo.
+
+La clave de API sigue siendo opcional, para hacerlo todo con un botón.
+
 ## Qué decirle al cliente a partir de capturas del informe
 
 En la sesión (paso **Informe G2 · Qué decirle**) o en la pestaña **Leer informe G2**:
